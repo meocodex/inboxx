@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 142.1 76.2% 36.3%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 142.1 76.2% 36.3%;
+    --radius: 0.5rem;
+
+    /* Conversations-specific colors (light mode - same as base) */
+    --conv-bg-primary: 0 0% 100%;
+    --conv-bg-secondary: 0 0% 98%;
+    --conv-bg-tertiary: 0 0% 96%;
+    --conv-bg-hover: 0 0% 94%;
+    --conv-border: 0 0% 90%;
+    --conv-border-light: 0 0% 85%;
+    --conv-text-primary: 0 0% 9%;
+    --conv-text-secondary: 0 0% 40%;
+    --conv-text-muted: 0 0% 55%;
+    --conv-accent: 158 100% 42%;
+
+    /* Channel colors */
+    --whatsapp: 142 70% 49%;
+    --instagram: 340 82% 57%;
+    --facebook: 214 89% 52%;
+
+    /* Status colors */
+    --online: 158 100% 42%;
+    --away: 45 100% 50%;
+    --busy: 3 100% 64%;
+
+    /* Border radius tokens */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-full: 50px;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 142.1 70.6% 45.3%;
+    --primary-foreground: 144.9 80.4% 10%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 142.4 71.8% 29.2%;
+
+    /* Conversations dark theme (nova paleta) */
+    --conv-bg-primary: 240 20% 4%;
+    --conv-bg-secondary: 240 18% 8%;
+    --conv-bg-tertiary: 240 17% 12%;
+    --conv-bg-hover: 240 16% 16%;
+    --conv-border: 240 16% 20%;
+    --conv-border-light: 240 12% 25%;
+    --conv-text-primary: 240 9% 97%;
+    --conv-text-secondary: 240 7% 65%;
+    --conv-text-muted: 240 5% 45%;
+    --conv-accent: 158 100% 42%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Scrollbar customizada */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}

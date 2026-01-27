@@ -1,0 +1,18 @@
+export {
+  obterDB,
+  salvarConversas,
+  obterConversas,
+  obterConversa,
+  removerConversa,
+  salvarMensagens,
+  obterMensagensDaConversa,
+  obterMensagem,
+  removerMensagensDaConversa,
+  adicionarFilaOffline,
+  obterFilaOffline,
+  removerFilaOffline,
+  atualizarTentativaFilaOffline,
+  salvarConfiguracao,
+  obterConfiguracao,
+  limparDatabase,
+} from './offline-db';

@@ -1,0 +1,24 @@
+{
+  "app": {
+    "nome": "CRM WhatsApp",
+    "descricao": "CRM WhatsApp Omnichannel"
+  },
+  "comum": {
+    "salvar": "Salvar",
+    "cancelar": "Cancelar",
+    "excluir": "Excluir",
+    "editar": "Editar",
+    "criar": "Criar",
+    "buscar": "Buscar",
+    "carregando": "Carregando...",
+    "erro": "Erro",
+    "sucesso": "Sucesso",
+    "confirmar": "Confirmar",
+    "voltar": "Voltar",
+    "fechar": "Fechar",
+    "sim": "Sim",
+    "nao": "Não",
+    "nenhum": "Nenhum",
+    "todos": "Todos"
+  }
+}

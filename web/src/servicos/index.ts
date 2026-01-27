@@ -1,0 +1,12 @@
+export { api, obterToken, estaAutenticado, extrairMensagemErro } from './api';
+export { autenticacaoServico } from './autenticacao.servico';
+export { dashboardServico } from './dashboard.servico';
+export { conversasServico } from './conversas.servico';
+export { contatosServico, etiquetasServico } from './contatos.servico';
+export { kanbanServico } from './kanban.servico';
+export { campanhasServico } from './campanhas.servico';
+export { relatoriosServico } from './relatorios.servico';
+export { chatbotServico } from './chatbot.servico';
+export { agendaServico } from './agenda.servico';
+export { conexoesServico } from './conexoes.servico';
+export { usuariosServico, perfisServico, equipesServico } from './usuarios.servico';
