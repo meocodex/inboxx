@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { relatoriosServico } from './relatorios.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   periodoQuerySchema,
   relatorioConversasQuerySchema,
@@ -30,11 +30,7 @@ export async function relatoriosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Querystring: RelatorioConversasQuery }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = relatorioConversasQuerySchema.parse(request.query);
       const relatorio = await relatoriosServico.conversas(clienteId, query);
@@ -58,11 +54,7 @@ export async function relatoriosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Querystring: RelatorioCampanhasQuery }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = relatorioCampanhasQuerySchema.parse(request.query);
       const relatorio = await relatoriosServico.campanhas(clienteId, query);
@@ -86,11 +78,7 @@ export async function relatoriosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Querystring: RelatorioKanbanQuery }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = relatorioKanbanQuerySchema.parse(request.query);
       const relatorio = await relatoriosServico.kanban(clienteId, query);
@@ -111,11 +99,7 @@ export async function relatoriosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('relatorios:visualizar')],
     },
     async (request: FastifyRequest<{ Querystring: PeriodoQuery }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = periodoQuerySchema.parse(request.query);
       const relatorio = await relatoriosServico.contatos(clienteId, query);

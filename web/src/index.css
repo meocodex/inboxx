@@ -7,37 +7,25 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 142.1 76.2% 36.3%;
-    --primary-foreground: 355.7 100% 97.3%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 158 100% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 98%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 142.1 76.2% 36.3%;
-    --radius: 0.5rem;
-
-    /* Conversations-specific colors (light mode - same as base) */
-    --conv-bg-primary: 0 0% 100%;
-    --conv-bg-secondary: 0 0% 98%;
-    --conv-bg-tertiary: 0 0% 96%;
-    --conv-bg-hover: 0 0% 94%;
-    --conv-border: 0 0% 90%;
-    --conv-border-light: 0 0% 85%;
-    --conv-text-primary: 0 0% 9%;
-    --conv-text-secondary: 0 0% 40%;
-    --conv-text-muted: 0 0% 55%;
-    --conv-accent: 158 100% 42%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 158 100% 42%;
+    --radius: 10px;
 
     /* Channel colors */
     --whatsapp: 142 70% 49%;
@@ -48,46 +36,28 @@
     --online: 158 100% 42%;
     --away: 45 100% 50%;
     --busy: 3 100% 64%;
-
-    /* Border radius tokens */
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 16px;
-    --radius-full: 50px;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 142.1 70.6% 45.3%;
-    --primary-foreground: 144.9 80.4% 10%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --background: 240 20% 4%;
+    --foreground: 240 9% 97%;
+    --card: 240 18% 8%;
+    --card-foreground: 240 9% 97%;
+    --popover: 240 18% 8%;
+    --popover-foreground: 240 9% 97%;
+    --primary: 158 100% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 17% 12%;
+    --secondary-foreground: 240 9% 97%;
+    --muted: 240 18% 8%;
+    --muted-foreground: 240 5% 45%;
+    --accent: 240 16% 16%;
+    --accent-foreground: 240 9% 97%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 142.4 71.8% 29.2%;
-
-    /* Conversations dark theme (nova paleta) */
-    --conv-bg-primary: 240 20% 4%;
-    --conv-bg-secondary: 240 18% 8%;
-    --conv-bg-tertiary: 240 17% 12%;
-    --conv-bg-hover: 240 16% 16%;
-    --conv-border: 240 16% 20%;
-    --conv-border-light: 240 12% 25%;
-    --conv-text-primary: 240 9% 97%;
-    --conv-text-secondary: 240 7% 65%;
-    --conv-text-muted: 240 5% 45%;
-    --conv-accent: 158 100% 42%;
+    --border: 240 16% 20%;
+    --input: 240 16% 20%;
+    --ring: 158 100% 42%;
   }
 }
 

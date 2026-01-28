@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { etiquetasServico } from './etiquetas.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   criarEtiquetaBodySchema,
   atualizarEtiquetaBodySchema,
@@ -25,11 +25,7 @@ export async function etiquetasRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('contatos:listar')],
     },
     async (request: FastifyRequest<{ Querystring: ListarEtiquetasQuery }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = listarEtiquetasQuerySchema.parse(request.query);
       const resultado = await etiquetasServico.listar(clienteId, query);
@@ -50,11 +46,7 @@ export async function etiquetasRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('contatos:listar')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const etiqueta = await etiquetasServico.obterPorId(clienteId, request.params.id);
 
@@ -74,11 +66,7 @@ export async function etiquetasRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('contatos:criar')],
     },
     async (request: FastifyRequest<{ Body: CriarEtiquetaDTO }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = criarEtiquetaBodySchema.parse(request.body);
       const etiqueta = await etiquetasServico.criar(clienteId, dados);
@@ -103,11 +91,7 @@ export async function etiquetasRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { id: string }; Body: AtualizarEtiquetaDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = atualizarEtiquetaBodySchema.parse(request.body);
       const etiqueta = await etiquetasServico.atualizar(clienteId, request.params.id, dados);
@@ -129,11 +113,7 @@ export async function etiquetasRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('contatos:excluir')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       await etiquetasServico.excluir(clienteId, request.params.id);
 

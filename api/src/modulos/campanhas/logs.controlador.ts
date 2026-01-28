@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { logsServico } from './logs.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   listarLogsQuerySchema,
   atualizarStatusLogBodySchema,
@@ -29,11 +29,7 @@ export async function logsRotas(app: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = listarLogsQuerySchema.parse(request.query);
       const resultado = await logsServico.listar(
@@ -61,11 +57,7 @@ export async function logsRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { campanhaId: string; id: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const log = await logsServico.obterPorId(
         clienteId,

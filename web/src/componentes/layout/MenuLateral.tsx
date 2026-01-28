@@ -11,18 +11,30 @@ import {
   Calendar,
   BarChart3,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   Smartphone,
   UserCog,
+  Bell,
+  Moon,
+  Sun,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { cn } from '@/utilitarios/cn';
-import { useUIStore, useSidebarColapsada } from '@/stores';
-import { usePermissoes } from '@/hooks';
+import { useUsuario, useUIStore, useTema } from '@/stores';
+import { usePermissoes, useAutenticacao } from '@/hooks';
 import { Button } from '@/componentes/ui/button';
 import { ScrollArea } from '@/componentes/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/componentes/ui/tooltip';
 import { Separator } from '@/componentes/ui/separator';
+import { Avatar, AvatarFallback } from '@/componentes/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/componentes/ui/dropdown-menu';
 
 // =============================================================================
 // Tipos
@@ -61,41 +73,28 @@ const itensConfig: ItemMenu[] = [
 // Componente Item do Menu
 // =============================================================================
 
-interface ItemMenuProps {
-  item: ItemMenu;
-  colapsado: boolean;
-}
-
-const ItemMenuComponent = memo(({ item, colapsado }: ItemMenuProps) => {
+const ItemMenuComponent = memo(({ item }: { item: ItemMenu }) => {
   const location = useLocation();
   const ativo = location.pathname === item.href;
   const Icone = item.icone;
 
-  const conteudo = (
-    <NavLink
-      to={item.href}
-      className={cn(
-        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-        'hover:bg-accent hover:text-accent-foreground',
-        ativo && 'bg-accent text-accent-foreground',
-        colapsado && 'justify-center'
-      )}
-    >
-      <Icone className="h-5 w-5 shrink-0" />
-      {!colapsado && <span>{item.titulo}</span>}
-    </NavLink>
+  return (
+    <Tooltip delayDuration={0}>
+      <TooltipTrigger asChild>
+        <NavLink
+          to={item.href}
+          className={cn(
+            'flex items-center justify-center rounded-lg p-2.5 transition-colors',
+            'hover:bg-accent hover:text-accent-foreground',
+            ativo && 'bg-accent text-accent-foreground'
+          )}
+        >
+          <Icone className="h-5 w-5 shrink-0" />
+        </NavLink>
+      </TooltipTrigger>
+      <TooltipContent side="right">{item.titulo}</TooltipContent>
+    </Tooltip>
   );
-
-  if (colapsado) {
-    return (
-      <Tooltip delayDuration={0}>
-        <TooltipTrigger asChild>{conteudo}</TooltipTrigger>
-        <TooltipContent side="right">{item.titulo}</TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return conteudo;
 });
 ItemMenuComponent.displayName = 'ItemMenuComponent';
 
@@ -104,9 +103,11 @@ ItemMenuComponent.displayName = 'ItemMenuComponent';
 // =============================================================================
 
 export const MenuLateral = memo(() => {
-  const colapsado = useSidebarColapsada();
-  const toggleColapsado = useUIStore((s) => s.toggleSidebarColapsada);
   const { temPermissao } = usePermissoes();
+  const usuario = useUsuario();
+  const tema = useTema();
+  const setTema = useUIStore((s) => s.setTema);
+  const { sair } = useAutenticacao();
 
   const itensFiltrados = itensMenu.filter(
     (item) => !item.permissao || temPermissao(item.permissao)
@@ -116,47 +117,113 @@ export const MenuLateral = memo(() => {
     (item) => !item.permissao || temPermissao(item.permissao)
   );
 
+  const iniciais = usuario?.nome
+    ?.split(' ')
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  const alternarTema = () => {
+    setTema(tema === 'dark' ? 'light' : 'dark');
+  };
+
   return (
-    <aside
-      className={cn(
-        'flex flex-col border-r bg-background transition-all duration-300',
-        colapsado ? 'w-16' : 'w-64'
-      )}
-    >
+    <aside className="flex w-[70px] shrink-0 flex-col border-r bg-background">
       {/* Logo */}
-      <div className={cn('flex h-16 items-center border-b px-4', colapsado && 'justify-center')}>
-        {!colapsado ? (
-          <span className="text-lg font-bold text-primary">CRM Omnichannel</span>
-        ) : (
-          <span className="text-lg font-bold text-primary">CRM</span>
-        )}
+      <div className="flex h-16 items-center justify-center border-b">
+        <span className="text-lg font-bold text-primary">CRM</span>
       </div>
 
-      {/* Menu */}
+      {/* Navegacao */}
       <ScrollArea className="flex-1 py-4">
-        <nav className="flex flex-col gap-1 px-2">
+        <nav className="flex flex-col items-center gap-1 px-3">
           {itensFiltrados.map((item) => (
-            <ItemMenuComponent key={item.href} item={item} colapsado={colapsado} />
+            <ItemMenuComponent key={item.href} item={item} />
           ))}
         </nav>
       </ScrollArea>
 
-      {/* Configurações */}
-      <div className="border-t py-4">
-        <nav className="flex flex-col gap-1 px-2">
-          {itensConfigFiltrados.map((item) => (
-            <ItemMenuComponent key={item.href} item={item} colapsado={colapsado} />
-          ))}
-        </nav>
-      </div>
+      {/* Secao Inferior */}
+      <div className="flex flex-col items-center gap-1 border-t px-3 py-3">
+        {/* Configuracoes */}
+        {itensConfigFiltrados.map((item) => (
+          <ItemMenuComponent key={item.href} item={item} />
+        ))}
 
-      {/* Botão Colapsar */}
-      <Separator />
-      <div className="p-2">
-        <Button variant="ghost" size="sm" className="w-full" onClick={toggleColapsado}>
-          {colapsado ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          {!colapsado && <span className="ml-2">Recolher</span>}
-        </Button>
+        <Separator className="my-2" />
+
+        {/* Toggle de Tema */}
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10"
+              onClick={alternarTema}
+            >
+              {tema === 'dark' ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {tema === 'dark' ? 'Modo claro' : 'Modo escuro'}
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Notificacoes */}
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative h-10 w-10">
+              <Bell className="h-5 w-5" />
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Notificacoes</TooltipContent>
+        </Tooltip>
+
+        {/* Avatar do Usuario */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="mt-1 rounded-full">
+              <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-border transition-all hover:ring-primary">
+                <AvatarFallback className="bg-primary text-xs text-primary-foreground">
+                  {iniciais || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" side="right" align="end">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{usuario?.nome}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {usuario?.email}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              <span>Meu Perfil</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Configuracoes</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={sair}
+              className="text-destructive focus:text-destructive"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Sair</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
   );

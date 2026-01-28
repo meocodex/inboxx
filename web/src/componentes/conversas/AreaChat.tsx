@@ -81,17 +81,17 @@ const BalaoMensagem = memo(({ mensagem }: BalaoMensagemProps) => {
     <div className={cn('flex', isEntrada ? 'justify-start' : 'justify-end')}>
       <div
         className={cn(
-          'max-w-[65%] rounded-conv-lg px-4 py-2.5 shadow-sm',
+          'max-w-[65%] rounded-lg px-4 py-2.5 shadow-sm',
           isEntrada
-            ? 'bg-conv-bg-tertiary text-conv-text-primary rounded-tl-none'
-            : 'bg-conv-accent text-white rounded-tr-none'
+            ? 'bg-secondary text-foreground rounded-tl-none'
+            : 'bg-primary text-white rounded-tr-none'
         )}
       >
         <p className="text-sm whitespace-pre-wrap break-words">{mensagem.conteudo}</p>
         <div
           className={cn(
             'flex items-center justify-end gap-1 mt-1',
-            isEntrada ? 'text-conv-text-muted' : 'text-white/70'
+            isEntrada ? 'text-muted-foreground' : 'text-white/70'
           )}
         >
           <span className="text-[10px]">{formatarHora(mensagem.enviadoEm)}</span>
@@ -139,7 +139,7 @@ export const AreaChat = memo(({
   // Se nao ha conversa selecionada
   if (!conversa) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-conv-bg-primary text-conv-text-muted">
+      <div className="flex-1 flex flex-col items-center justify-center bg-background text-muted-foreground">
         <User className="h-16 w-16 mb-4 opacity-50" />
         <p className="text-lg font-medium">Selecione uma conversa</p>
         <p className="text-sm mt-1">Escolha uma conversa da lista para iniciar o atendimento</p>
@@ -162,13 +162,13 @@ export const AreaChat = memo(({
   const tags: Array<{ nome: string; variante: string }> = [
     { nome: 'VIP', variante: 'bg-amber-500/15 text-amber-500 border-amber-500/30' },
     { nome: 'Prioridade alta', variante: 'bg-red-500/15 text-red-500 border-red-500/30' },
-    { nome: 'Em atendimento', variante: 'bg-conv-accent/15 text-conv-accent border-conv-accent/30' },
+    { nome: 'Em atendimento', variante: 'bg-primary/15 text-primary border-primary/30' },
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-conv-bg-primary min-w-0">
+    <div className="flex-1 flex flex-col bg-background min-w-0">
       {/* Header do Chat */}
-      <div className="border-b border-conv-border bg-conv-bg-secondary">
+      <div className="border-b border-border bg-muted">
         {/* Linha 1: Info do contato + acoes */}
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
@@ -184,21 +184,21 @@ export const AreaChat = memo(({
                 </AvatarFallback>
               </Avatar>
               {/* Status online */}
-              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-online border-2 border-conv-bg-secondary" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-online border-2 border-muted" />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-conv-text-primary">
+                <h3 className="font-semibold text-foreground">
                   {conversa.contato.nome}
                 </h3>
                 {canalAtual && (
-                  <div className="flex items-center gap-1 text-xs text-conv-text-muted">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <span>•</span>
                     <span>Online</span>
                     <span>•</span>
                     <IconeCanal canal={canalAtual} tamanho="sm" />
-                    <span className="text-conv-text-secondary">
+                    <span className="text-muted-foreground">
                       {canalAtual === TipoCanal.WHATSAPP && 'WhatsApp Vendas'}
                       {canalAtual === TipoCanal.INSTAGRAM && 'Instagram'}
                       {canalAtual === TipoCanal.FACEBOOK && 'Facebook'}
@@ -216,7 +216,7 @@ export const AreaChat = memo(({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-conv-md text-conv-text-muted hover:text-conv-text-primary hover:bg-conv-bg-hover"
+                  className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
                 >
                   <ArrowLeftRight className="h-4 w-4" />
                 </Button>
@@ -229,7 +229,7 @@ export const AreaChat = memo(({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-conv-md text-conv-text-muted hover:text-conv-text-primary hover:bg-conv-bg-hover"
+                  className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
                 >
                   <CheckCircle className="h-4 w-4" />
                 </Button>
@@ -244,10 +244,10 @@ export const AreaChat = memo(({
                   size="icon"
                   onClick={onTogglePainelInfo}
                   className={cn(
-                    'h-8 w-8 rounded-conv-md',
+                    'h-8 w-8 rounded-md',
                     painelInfoAberto
-                      ? 'bg-conv-accent/15 text-conv-accent'
-                      : 'text-conv-text-muted hover:text-conv-text-primary hover:bg-conv-bg-hover'
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                   )}
                 >
                   <Info className="h-4 w-4" />
@@ -261,7 +261,7 @@ export const AreaChat = memo(({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-conv-md text-conv-text-muted hover:text-conv-text-primary hover:bg-conv-bg-hover"
+                  className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
@@ -294,7 +294,7 @@ export const AreaChat = memo(({
             <Badge
               key={index}
               variant="outline"
-              className={cn('text-xs rounded-conv-full border shrink-0', tag.variante)}
+              className={cn('text-xs rounded-full border shrink-0', tag.variante)}
             >
               {tag.nome}
             </Badge>
@@ -309,7 +309,7 @@ export const AreaChat = memo(({
             <Carregando texto="Carregando mensagens..." />
           </div>
         ) : mensagens.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-conv-text-muted">
+          <div className="flex items-center justify-center h-full text-muted-foreground">
             <p>Nenhuma mensagem ainda</p>
           </div>
         ) : (
@@ -327,7 +327,7 @@ export const AreaChat = memo(({
                 <div key={msg.id}>
                   {mostrarData && (
                     <div className="flex justify-center my-4">
-                      <span className="text-[11px] bg-conv-bg-tertiary px-3 py-1 rounded-conv-full text-conv-text-muted font-medium">
+                      <span className="text-[11px] bg-secondary px-3 py-1 rounded-full text-muted-foreground font-medium">
                         {dataAtual === formatarData(new Date().toISOString(), 'dd/MM/yyyy')
                           ? 'Hoje'
                           : dataAtual}
@@ -352,15 +352,15 @@ export const AreaChat = memo(({
 
       {/* Entrada de Mensagem */}
       {conversaEncerrada ? (
-        <div className="border-t border-conv-border bg-conv-bg-tertiary/50 p-4 text-center">
-          <p className="text-sm text-conv-text-muted mb-2">
+        <div className="border-t border-border bg-secondary/50 p-4 text-center">
+          <p className="text-sm text-muted-foreground mb-2">
             Esta conversa foi encerrada
           </p>
           <Button
             variant="outline"
             size="sm"
             onClick={onReabrir}
-            className="rounded-conv-md"
+            className="rounded-md"
           >
             Reabrir conversa
           </Button>

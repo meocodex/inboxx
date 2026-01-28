@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { obterToken } from '@/servicos/api';
 import { useEstaAutenticado } from '@/stores';
+import { WS_URL } from '@/configuracao/env';
 
 // =============================================================================
 // Tipos
@@ -115,7 +116,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     const token = obterToken();
     if (socketRef.current?.connected || !token) return;
 
-    const url = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+    const url = WS_URL;
 
     socketRef.current = io(url, {
       auth: { token },

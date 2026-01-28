@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComBuscaSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Enums
@@ -81,12 +82,9 @@ export const atualizarConexaoBodySchema = z.object({
     .nullable(),
 });
 
-export const listarConexoesQuerySchema = z.object({
-  pagina: z.coerce.number().int().positive().default(1),
-  limite: z.coerce.number().int().positive().max(100).default(20),
+export const listarConexoesQuerySchema = paginacaoComBuscaSchema.extend({
   canal: z.enum(['WHATSAPP', 'INSTAGRAM', 'FACEBOOK']).optional(),
   status: z.enum(['CONECTADO', 'DESCONECTADO', 'RECONECTANDO', 'ERRO']).optional(),
-  busca: z.string().optional(),
 });
 
 export const atualizarStatusBodySchema = z.object({

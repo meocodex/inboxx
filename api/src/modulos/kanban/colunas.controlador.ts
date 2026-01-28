@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { colunasServico } from './colunas.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   criarColunaBodySchema,
   atualizarColunaBodySchema,
@@ -25,11 +25,7 @@ export async function colunasRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('kanban:visualizar')],
     },
     async (request: FastifyRequest<{ Params: { quadroId: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const colunas = await colunasServico.listar(clienteId, request.params.quadroId);
 
@@ -52,11 +48,7 @@ export async function colunasRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { quadroId: string; id: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const coluna = await colunasServico.obterPorId(
         clienteId,
@@ -83,11 +75,7 @@ export async function colunasRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { quadroId: string }; Body: CriarColunaDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = criarColunaBodySchema.parse(request.body);
       const coluna = await colunasServico.criar(clienteId, request.params.quadroId, dados);
@@ -115,11 +103,7 @@ export async function colunasRotas(app: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = atualizarColunaBodySchema.parse(request.body);
       const coluna = await colunasServico.atualizar(
@@ -149,11 +133,7 @@ export async function colunasRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { quadroId: string; id: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       await colunasServico.excluir(clienteId, request.params.quadroId, request.params.id);
 
@@ -176,11 +156,7 @@ export async function colunasRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { quadroId: string }; Body: ReordenarColunasDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = reordenarColunasBodySchema.parse(request.body);
       await colunasServico.reordenar(clienteId, request.params.quadroId, dados);

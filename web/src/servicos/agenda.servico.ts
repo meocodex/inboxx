@@ -17,7 +17,7 @@ export const agendaServico = {
   // Listar Eventos
   // ---------------------------------------------------------------------------
   async listar(filtros?: FiltrosEvento): Promise<EventoResumo[]> {
-    const response = await api.get<RespostaApi<EventoResumo[]>>('/agenda/eventos', {
+    const response = await api.get<RespostaApi<EventoResumo[]>>('/agendamento/compromissos', {
       params: filtros,
     });
     return response.data.dados;
@@ -27,7 +27,7 @@ export const agendaServico = {
   // Obter Evento por ID
   // ---------------------------------------------------------------------------
   async obterPorId(id: string): Promise<Evento> {
-    const response = await api.get<RespostaApi<Evento>>(`/agenda/eventos/${id}`);
+    const response = await api.get<RespostaApi<Evento>>(`/agendamento/compromissos/${id}`);
     return response.data.dados;
   },
 
@@ -35,7 +35,7 @@ export const agendaServico = {
   // Criar Evento
   // ---------------------------------------------------------------------------
   async criar(dados: CriarEventoDTO): Promise<Evento> {
-    const response = await api.post<RespostaApi<Evento>>('/agenda/eventos', dados);
+    const response = await api.post<RespostaApi<Evento>>('/agendamento/compromissos', dados);
     return response.data.dados;
   },
 
@@ -43,7 +43,7 @@ export const agendaServico = {
   // Atualizar Evento
   // ---------------------------------------------------------------------------
   async atualizar(id: string, dados: AtualizarEventoDTO): Promise<Evento> {
-    const response = await api.put<RespostaApi<Evento>>(`/agenda/eventos/${id}`, dados);
+    const response = await api.put<RespostaApi<Evento>>(`/agendamento/compromissos/${id}`, dados);
     return response.data.dados;
   },
 
@@ -51,14 +51,14 @@ export const agendaServico = {
   // Excluir Evento
   // ---------------------------------------------------------------------------
   async excluir(id: string): Promise<void> {
-    await api.delete(`/agenda/eventos/${id}`);
+    await api.delete(`/agendamento/compromissos/${id}`);
   },
 
   // ---------------------------------------------------------------------------
   // Marcar como Concluído
   // ---------------------------------------------------------------------------
   async concluir(id: string): Promise<Evento> {
-    const response = await api.post<RespostaApi<Evento>>(`/agenda/eventos/${id}/concluir`);
+    const response = await api.post<RespostaApi<Evento>>(`/agendamento/compromissos/${id}/concluir`);
     return response.data.dados;
   },
 
@@ -66,7 +66,7 @@ export const agendaServico = {
   // Cancelar Evento
   // ---------------------------------------------------------------------------
   async cancelar(id: string): Promise<Evento> {
-    const response = await api.post<RespostaApi<Evento>>(`/agenda/eventos/${id}/cancelar`);
+    const response = await api.post<RespostaApi<Evento>>(`/agendamento/compromissos/${id}/cancelar`);
     return response.data.dados;
   },
 };

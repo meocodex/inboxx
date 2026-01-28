@@ -5,8 +5,8 @@ Sistema de CRM multi-tenant para atendimento omnichannel via WhatsApp e Instagra
 ## Tecnologias
 
 - **Runtime:** Node.js 20+ / TypeScript 5
-- **Framework:** Fastify 4
-- **ORM:** Prisma 5
+- **Framework:** Fastify 5
+- **ORM:** Drizzle ORM
 - **Banco de Dados:** PostgreSQL 16
 - **Cache:** Redis 7 (opcional, graceful degradation)
 - **Validacao:** Zod
@@ -18,15 +18,13 @@ Sistema de CRM multi-tenant para atendimento omnichannel via WhatsApp e Instagra
 ```
 crm/
 ├── api/                    # Backend Fastify
-│   ├── prisma/
-│   │   ├── schema.prisma   # Schema do banco
-│   │   └── seed.ts         # Dados iniciais
+│   ├── scripts/            # Seed e utilitarios
 │   └── src/
 │       ├── configuracao/   # Ambiente e constantes
 │       ├── compartilhado/  # Erros, middlewares, guardas, utilitarios
-│       ├── infraestrutura/ # Prisma e Redis
+│       ├── infraestrutura/ # Drizzle ORM e Redis
 │       └── modulos/        # Modulos da aplicacao
-└── web/                    # Frontend (futuro)
+└── web/                    # Frontend React (build servido pela API)
 ```
 
 ## Modulos Implementados
@@ -51,6 +49,8 @@ crm/
 | `kanban` | Pipeline de vendas |
 | `agendamento` | Compromissos e lembretes |
 | `relatorios` | Analytics e dashboard |
+| `uploads` | Upload de arquivos |
+| `whatsapp` | Provedores WhatsApp e webhooks |
 
 ## Requisitos
 
@@ -60,29 +60,32 @@ crm/
 
 ## Instalacao
 
+Tudo roda na porta 5000 (Fastify serve API + frontend).
+
 ```bash
 # Clonar repositorio
 git clone <url-do-repositorio>
 cd crm
 
 # Instalar dependencias
-cd api
-npm install
+cd api && npm install
+cd ../web && npm install
 
 # Configurar ambiente
+cd ../api
 cp .env.exemplo .env
 # Editar .env com suas configuracoes
 
-# Gerar cliente Prisma
-npm run prisma:generate
-
 # Criar tabelas no banco
-npm run prisma:push
+npm run drizzle:push
 
 # Popular dados iniciais
-npm run prisma:seed
+npx tsx scripts/seed.ts
 
-# Iniciar servidor
+# Buildar frontend e copiar para API
+npm run build:full
+
+# Iniciar servidor (porta 5000)
 npm run dev
 ```
 
@@ -91,7 +94,7 @@ npm run dev
 ```env
 # Servidor
 NODE_ENV=development
-PORT=3335
+PORT=5000
 HOST=0.0.0.0
 
 # Banco de Dados
@@ -106,19 +109,21 @@ JWT_SECRET=sua-chave-secreta-aqui
 JWT_EXPIRES_IN=7d
 
 # CORS
-CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+CORS_ORIGINS=http://localhost:5000
 ```
 
 ## Scripts Disponiveis
 
 ```bash
-npm run dev           # Inicia servidor em modo desenvolvimento
-npm run build         # Compila TypeScript
-npm run start         # Inicia servidor compilado
-npm run prisma:generate  # Gera cliente Prisma
-npm run prisma:push      # Aplica schema ao banco
-npm run prisma:seed      # Popula dados iniciais
-npm run prisma:studio    # Abre interface grafica do Prisma
+npm run dev              # Inicia servidor em modo desenvolvimento (porta 5000)
+npm run build            # Compila TypeScript
+npm run build:full       # Builda frontend + copia para api/public + compila API
+npm run start            # Inicia servidor compilado
+npm run drizzle:generate # Gera migrations Drizzle
+npm run drizzle:migrate  # Executa migrations
+npm run drizzle:push     # Aplica schema ao banco
+npm run drizzle:studio   # Abre interface grafica do Drizzle
+npm test                 # Executa testes (Vitest)
 ```
 
 ## Endpoints da API

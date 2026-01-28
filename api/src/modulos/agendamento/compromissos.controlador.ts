@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { compromissosServico } from './compromissos.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   criarCompromissoBodySchema,
   atualizarCompromissoBodySchema,
@@ -28,11 +28,7 @@ export async function compromissosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Querystring: ListarCompromissosQuery }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = listarCompromissosQuerySchema.parse(request.query);
       const resultado = await compromissosServico.listar(clienteId, query);
@@ -53,11 +49,7 @@ export async function compromissosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('agendamento:visualizar')],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const compromissos = await compromissosServico.listarHoje(clienteId);
 
@@ -80,11 +72,7 @@ export async function compromissosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Querystring: { limite?: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const limite = request.query.limite ? parseInt(request.query.limite, 10) : 5;
       const compromissos = await compromissosServico.listarProximos(clienteId, limite);
@@ -105,11 +93,7 @@ export async function compromissosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('agendamento:visualizar')],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const estatisticas = await compromissosServico.obterEstatisticas(clienteId);
 
@@ -129,11 +113,7 @@ export async function compromissosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('agendamento:visualizar')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const compromisso = await compromissosServico.obterPorId(clienteId, request.params.id);
 
@@ -153,11 +133,7 @@ export async function compromissosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('agendamento:criar')],
     },
     async (request: FastifyRequest<{ Body: CriarCompromissoDTO }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = criarCompromissoBodySchema.parse(request.body);
       const compromisso = await compromissosServico.criar(clienteId, dados);
@@ -182,11 +158,7 @@ export async function compromissosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { id: string }; Body: AtualizarCompromissoDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = atualizarCompromissoBodySchema.parse(request.body);
       const compromisso = await compromissosServico.atualizar(
@@ -212,11 +184,7 @@ export async function compromissosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('agendamento:excluir')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       await compromissosServico.excluir(clienteId, request.params.id);
 

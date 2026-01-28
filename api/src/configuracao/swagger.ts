@@ -12,7 +12,7 @@ export async function registrarSwagger(app: FastifyInstance): Promise<void> {
       },
       servers: [
         {
-          url: 'http://localhost:3335',
+          url: 'http://localhost:5000',
           description: 'Desenvolvimento',
         },
       ],

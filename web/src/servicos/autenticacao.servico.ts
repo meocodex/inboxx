@@ -62,7 +62,7 @@ export const autenticacaoServico = {
   },
 
   // ---------------------------------------------------------------------------
-  // Atualizar Perfil
+  // Atualizar Perfil (TODO: endpoint nao implementado no backend)
   // ---------------------------------------------------------------------------
   async atualizarPerfil(dados: { nome: string; email: string }): Promise<Usuario> {
     const response = await api.put<RespostaApi<Usuario>>('/autenticacao/perfil', dados);
@@ -70,7 +70,7 @@ export const autenticacaoServico = {
   },
 
   // ---------------------------------------------------------------------------
-  // Alterar Senha
+  // Alterar Senha (TODO: endpoint nao implementado no backend)
   // ---------------------------------------------------------------------------
   async alterarSenha(senhaAtual: string, novaSenha: string): Promise<void> {
     await api.put('/autenticacao/senha', { senhaAtual, novaSenha });

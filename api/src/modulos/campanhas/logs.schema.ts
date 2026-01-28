@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoBaseSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Logs de Campanha
@@ -14,9 +15,8 @@ export const statusEnvioEnum = z.enum([
 ]);
 
 // Schema para listar logs
-export const listarLogsQuerySchema = z.object({
-  pagina: z.coerce.number().min(1).default(1),
-  limite: z.coerce.number().min(1).max(100).default(50),
+export const listarLogsQuerySchema = paginacaoBaseSchema.extend({
+  limite: z.coerce.number().int().positive().max(100).default(50),
   status: statusEnvioEnum.optional(),
 });
 

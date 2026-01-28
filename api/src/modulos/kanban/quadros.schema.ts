@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComBuscaSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Quadros Kanban
@@ -17,11 +18,7 @@ export const atualizarQuadroBodySchema = z.object({
 });
 
 // Schema para listar quadros
-export const listarQuadrosQuerySchema = z.object({
-  pagina: z.coerce.number().min(1).default(1),
-  limite: z.coerce.number().min(1).max(100).default(20),
-  busca: z.string().optional(),
-});
+export const listarQuadrosQuerySchema = paginacaoComBuscaSchema;
 
 // =============================================================================
 // Tipos exportados

@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Idioma / Language
+
+**SEMPRE responda em Português do Brasil (PT-BR).** Todas as respostas, explicações, comentários e interações devem ser em português, independentemente do idioma da pergunta do usuário.
+
 ## Project Overview
 
 CRM WhatsApp Omnichannel - A multi-tenant SaaS platform for WhatsApp/Instagram/Facebook customer service.
@@ -16,8 +20,8 @@ CRM WhatsApp Omnichannel - A multi-tenant SaaS platform for WhatsApp/Instagram/F
 ## Current Project Status (Sprint 19-22 Complete)
 
 ### Backend API - Fully Implemented
-- **19 modules** operational in `api/src/modulos/`
-- **pg-boss workers** for background jobs (campaigns, scheduled messages, reminders, webhook retry)
+- **20 modules** operational in `api/src/modulos/`
+- **BullMQ workers** for background jobs (campaigns, scheduled messages, reminders, webhook retry, search sync)
 - **WhatsApp Integration** with Meta Cloud API + UaiZap providers
 - **WebSocket** real-time messaging via Socket.io
 - **Dual storage** (local filesystem + AWS S3)
@@ -52,13 +56,14 @@ api/src/modulos/
 └── whatsapp/        # WhatsApp providers + webhooks
 ```
 
-### Workers (pg-boss)
+### Workers (BullMQ)
 ```
 api/src/workers/
-├── campanhas.worker.ts         # Campaign processing
-├── mensagens-agendadas.worker.ts # Scheduled messages
-├── lembretes.worker.ts         # Reminder notifications
-└── webhooks-retry.worker.ts    # Webhook retry with backoff
+├── campanhas.worker.ts             # Campaign processing
+├── mensagens-agendadas.worker.ts   # Scheduled messages
+├── lembretes.worker.ts             # Reminder notifications
+├── webhooks-retry.worker.ts        # Webhook retry with backoff
+└── sincronizacao-busca.worker.ts   # Meilisearch sync
 ```
 
 ### Test Infrastructure
@@ -84,26 +89,32 @@ web/src/pwa/
 
 ### Backend
 - **Runtime:** Node.js 20+ LTS
-- **Framework:** Fastify 4.x (NOT Express)
-- **Language:** TypeScript 5+
-- **ORM:** Prisma 5+ (NOT TypeORM/Sequelize)
-- **Queues:** pg-boss 9+ using PostgreSQL (NOT BullMQ/RabbitMQ)
+- **Framework:** Fastify 5.7.x (NOT Express)
+- **Language:** TypeScript 5.7+
+- **ORM:** Drizzle ORM 0.45.x (NOT Prisma/TypeORM/Sequelize)
+- **Queues:** BullMQ 5.x using Redis (NOT pg-boss/RabbitMQ)
 - **WebSocket:** Socket.io 4.x
 - **Validation:** Zod 3.x
+- **JWT:** jose 6.x (NOT jsonwebtoken)
+- **Hashing:** argon2 / bcrypt
 
 ### Frontend
-- **Framework:** React 18 + Vite 5 (NOT Next.js)
-- **State:** Zustand 4.x (NOT Redux)
+- **Framework:** React 19 + Vite 6 (NOT Next.js)
+- **State:** Zustand 5.x (NOT Redux)
 - **Data Fetching:** TanStack Query v5
 - **UI:** Tailwind CSS + shadcn/ui
 - **Forms:** React Hook Form + Zod
+- **i18n:** i18next (PT-BR + EN)
+- **Monitoring:** Sentry 10.x
 
 ### Infrastructure
-- **Database:** PostgreSQL 16 (main + queues)
-- **Cache:** Redis 7 (sessions + Socket.io pub/sub)
-- **Storage:** AWS S3 / MinIO
+- **Database:** PostgreSQL 16
+- **Cache:** Redis 7 (sessions + Socket.io pub/sub + BullMQ queues)
+- **Search:** Meilisearch (optional)
+- **Storage:** AWS S3 / MinIO / Local filesystem
 - **Deploy:** EasyPanel + Docker
-- **Monorepo:** pnpm + Turborepo
+- **Observability:** Prometheus + Grafana + Loki
+- **Package Manager:** npm (NOT pnpm/yarn)
 
 ## Code Conventions
 
@@ -144,44 +155,37 @@ usuarios, conversas, mensagens_agendadas, contatos_etiquetas
 
 ```
 crm-whatsapp/
-├── aplicacoes/
-│   ├── api/                    # Fastify backend
-│   │   ├── prisma/
-│   │   │   └── schema.prisma
-│   │   └── src/
-│   │       ├── configuracao/   # Environment, constants
-│   │       ├── modulos/        # Feature modules
-│   │       │   ├── autenticacao/
-│   │       │   ├── clientes/
-│   │       │   ├── usuarios/
-│   │       │   ├── conexoes/
-│   │       │   ├── conversas/
-│   │       │   ├── contatos/
-│   │       │   ├── chatbot/
-│   │       │   └── campanhas/
-│   │       ├── compartilhado/  # Shared (errors, middlewares, guards)
-│   │       ├── infraestrutura/ # DB, cache, storage, queues
-│   │       ├── websocket/      # Socket.io gateway
-│   │       └── workers/        # Background job processors
-│   │
-│   ├── web/                    # React dashboard
-│   │   └── src/
-│   │       ├── paginas/
-│   │       ├── componentes/
-│   │       ├── hooks/
-│   │       ├── servicos/
-│   │       └── stores/
-│   │
-│   └── pwa/                    # Mobile PWA (simplified)
+├── api/                        # Fastify backend
+│   ├── src/
+│   │   ├── configuracao/       # Environment, constants
+│   │   ├── modulos/            # Feature modules (20 modules)
+│   │   ├── compartilhado/      # Shared (errors, middlewares, guards)
+│   │   ├── infraestrutura/     # DB (Drizzle), cache, storage, queues
+│   │   │   └── banco/schema/   # Drizzle schema definitions
+│   │   ├── websocket/          # Socket.io gateway
+│   │   └── workers/            # BullMQ background job processors
+│   ├── scripts/                # Seed & utility scripts
+│   └── drizzle.config.ts       # Drizzle Kit configuration
 │
-└── pacotes/                    # Shared packages
-    ├── tipos/
-    └── utilitarios/
+├── web/                        # React dashboard
+│   └── src/
+│       ├── paginas/            # 13 page components
+│       ├── componentes/        # UI components
+│       ├── hooks/              # Custom hooks
+│       ├── servicos/           # API service layer (axios)
+│       ├── stores/             # Zustand state stores
+│       ├── tipos/              # TypeScript type definitions
+│       ├── configuracao/       # Runtime env config
+│       └── pwa/                # PWA offline support
+│
+├── infra/                      # Prometheus, Grafana configs
+├── docs/                       # Planning & specification documents
+└── docker-compose.yml          # Dev services (Redis, Meilisearch, etc.)
 ```
 
 ## Module Structure Pattern
 
-Each module in `aplicacoes/api/src/modulos/` follows:
+Each module in `api/src/modulos/` follows:
 ```
 modulos/usuarios/
 ├── usuarios.controlador.ts   # Route handlers
@@ -199,12 +203,9 @@ modulos/usuarios/
 ### Multi-Tenant Filtering
 Always filter by `clienteId` - injected via middleware:
 ```typescript
-const conversas = await prisma.conversa.findMany({
-  where: {
-    clienteId: req.usuario.clienteId, // MANDATORY
-    // other filters...
-  },
-});
+const conversas = await db.select()
+  .from(conversasTable)
+  .where(eq(conversasTable.clienteId, req.usuario.clienteId)); // MANDATORY
 ```
 
 ### Custom Errors
@@ -229,7 +230,7 @@ preHandler: [app.autenticar, app.verificarPermissao('usuarios:criar')]
 
 ## Development Phases
 
-1. ✅ Foundation: Monorepo + Docker + Prisma + Health check
+1. ✅ Foundation: Docker + Drizzle + Health check
 2. ✅ Auth + Licensing: JWT + IP validation + Profiles
 3. ✅ Multi-Tenant: Clients CRUD + RLS + Teams
 4. ✅ WhatsApp Connections: Meta Cloud API + UaiZap
@@ -250,62 +251,82 @@ preHandler: [app.autenticar, app.verificarPermissao('usuarios:criar')]
 
 ## Security Rules
 
-- Hash passwords with bcrypt (cost 12)
-- JWT tokens with minimal payload (`sub`, `clienteId`, `perfilId`)
+- Hash passwords with argon2 (bcrypt also available)
+- JWT tokens via `jose` library with minimal payload (`sub`, `clienteId`, `perfilId`)
 - Never return sensitive data (passwords, tokens) in API responses
 - Validate all inputs with Zod before processing
-- Use httpOnly cookies for tokens (NOT localStorage)
-- Sanitize HTML with DOMPurify
+- Token storage in sessionStorage (frontend)
+- CASL-based permission system for fine-grained access control
+- Helmet security headers + rate limiting (100 req/min)
 - Generic error messages for auth failures (prevents enumeration)
 
 ## Key Dependencies
 
 ### Backend (api/package.json)
-- **fastify** ^4.26.0 - Web framework
-- **@prisma/client** ^5.10.0 - Database ORM
-- **pg-boss** ^12.5.4 - PostgreSQL job queue
+- **fastify** ^5.7.1 - Web framework
+- **drizzle-orm** ^0.45.1 - Database ORM
+- **bullmq** ^5.67.1 - Redis job queue
 - **socket.io** ^4.8.3 - WebSocket
 - **ioredis** ^5.3.2 - Redis client
+- **jose** ^6.1.3 - JWT signing/verification
 - **axios** ^1.13.2 - HTTP client (WhatsApp API)
+- **@sentry/node** ^10.37.0 - Error tracking
+- **prom-client** ^15.1.3 - Prometheus metrics
 - **vitest** ^4.0.18 - Test framework
 
 ### Frontend (web/package.json)
-- **react** ^18.2.0 - UI library
-- **vite** ^5.1.5 - Build tool
+- **react** ^19.2.4 - UI library
+- **vite** ^6.4.1 - Build tool
 - **@tanstack/react-query** ^5.28.0 - Data fetching
-- **zustand** ^4.5.2 - State management
+- **zustand** ^5.0.10 - State management
 - **socket.io-client** ^4.8.3 - WebSocket
+- **i18next** ^25.8.0 - Internationalization
+- **@sentry/react** ^10.37.0 - Error tracking
 - **workbox-window** ^7.4.0 - PWA/Service Worker
-- **idb** ^8.0.3 - IndexedDB wrapper
-- **vite-plugin-pwa** ^1.2.0 - PWA build plugin
 - **vitest** ^4.0.18 - Test framework
 
 ## Running the Project
 
-```bash
-# Backend
-cd api
-pnpm install
-pnpm prisma:generate
-pnpm dev                    # Development server on :3333
+Everything runs on port 5000 (Fastify serves both API and frontend).
 
-# Frontend
-cd web
-pnpm install
-pnpm dev                    # Development server on :5173
+```bash
+# Infrastructure (Redis, Meilisearch, etc.)
+docker-compose up -d
+
+# Install dependencies
+cd api && npm install
+cd web && npm install
+
+# Development (build frontend + run API on port 5000)
+cd web && npm run build          # Build frontend
+cp -r dist/* ../api/public/      # Copy to API public folder
+cd api && npm run dev            # Everything on :5000
+
+# Or use the unified build script:
+cd api && npm run build:full     # Builds web + API
+cd api && npm run dev            # Port 5000
+
+# Production (Docker)
+docker build -t crm .            # Uses root Dockerfile
+docker run -p 5000:5000 crm      # Everything on port 5000
+
+# Seed Database
+cd api
+npx tsx scripts/seed.ts          # Create super admin
+npx tsx scripts/seed-cliente.ts  # Create demo client
 
 # Tests
-cd api && pnpm test         # Backend tests
-cd web && pnpm test         # Frontend tests
+cd api && npm test               # Backend tests
+cd web && npm test               # Frontend tests
 ```
 
 ## Environment Variables
 
-See `api/.env.example` for required variables:
-- `DATABASE_URL` - PostgreSQL connection
-- `REDIS_URL` - Redis connection
-- `JWT_SECRET` - Token signing key
-- `META_ACCESS_TOKEN` - WhatsApp Cloud API
-- `META_PHONE_NUMBER_ID` - WhatsApp number ID
-- `META_APP_SECRET` - Webhook validation
-- `UAIZAP_API_URL` / `UAIZAP_API_KEY` - Alternative provider
+See `api/.env.exemplo` for required variables:
+- `DATABASE_URL` - PostgreSQL connection (mandatory)
+- `REDIS_URL` - Redis connection (mandatory)
+- `JWT_SECRET` - Token signing key (min 32 chars, mandatory)
+- `COOKIE_SECRET` - Cookie signing key (min 32 chars, mandatory)
+- `META_WEBHOOK_VERIFY_TOKEN` - WhatsApp webhook validation
+- `MEILI_URL` / `MEILI_MASTER_KEY` - Meilisearch (optional)
+- `SENTRY_DSN` - Error monitoring (optional)

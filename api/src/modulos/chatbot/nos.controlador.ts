@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { nosServico } from './nos.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   criarNoBodySchema,
   atualizarNoBodySchema,
@@ -32,11 +32,7 @@ export async function nosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { fluxoId: string }; Querystring: ListarNosQuery }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = listarNosQuerySchema.parse(request.query);
       const resultado = await nosServico.listar(clienteId, request.params.fluxoId, query);
@@ -60,11 +56,7 @@ export async function nosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { fluxoId: string; id: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const no = await nosServico.obterPorId(
         clienteId,
@@ -91,11 +83,7 @@ export async function nosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { fluxoId: string }; Body: CriarNoDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = criarNoBodySchema.parse(request.body);
       const no = await nosServico.criar(clienteId, request.params.fluxoId, dados);
@@ -120,11 +108,7 @@ export async function nosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { fluxoId: string; id: string }; Body: AtualizarNoDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = atualizarNoBodySchema.parse(request.body);
       const no = await nosServico.atualizar(
@@ -154,11 +138,7 @@ export async function nosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { fluxoId: string; id: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       await nosServico.excluir(clienteId, request.params.fluxoId, request.params.id);
 
@@ -181,11 +161,7 @@ export async function nosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { fluxoId: string }; Body: AtualizarPosicoesDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = atualizarPosicoesBodySchema.parse(request.body);
       await nosServico.atualizarPosicoes(clienteId, request.params.fluxoId, dados);
@@ -209,11 +185,7 @@ export async function nosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { fluxoId: string }; Body: ConectarNosDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = conectarNosBodySchema.parse(request.body);
       await nosServico.conectar(clienteId, request.params.fluxoId, dados);

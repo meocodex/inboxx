@@ -176,7 +176,7 @@ export function useUpload() {
   );
 
   // ---------------------------------------------------------------------------
-  // Upload Multiplo
+  // Upload Multiplo (sequencial - envia um a um)
   // ---------------------------------------------------------------------------
   const uploadMultiplo = useCallback(
     async (
@@ -188,51 +188,48 @@ export function useUpload() {
       setErro(null);
 
       try {
-        const formData = new FormData();
+        const enviados: ResultadoUpload[] = [];
+        const erros: ErroUpload[] = [];
 
-        // Validar e adicionar arquivos
-        const errosValidacao: ErroUpload[] = [];
-        arquivos.forEach((arquivo) => {
+        for (let i = 0; i < arquivos.length; i++) {
+          const arquivo = arquivos[i];
           const validacao = validarArquivo(arquivo, pasta);
-          if (validacao.valido) {
-            formData.append('files', arquivo);
-          } else {
-            errosValidacao.push({
-              arquivo: arquivo.name,
-              erro: validacao.erro || 'Arquivo invalido',
-            });
+
+          if (!validacao.valido) {
+            erros.push({ arquivo: arquivo.name, erro: validacao.erro || 'Arquivo invalido' });
+            continue;
           }
-        });
 
-        // Se todos os arquivos falharam na validacao
-        if (errosValidacao.length === arquivos.length) {
-          setErro('Todos os arquivos sao invalidos');
-          return { enviados: [], erros: errosValidacao };
-        }
+          try {
+            const formData = new FormData();
+            formData.append('file', arquivo);
 
-        const response = await api.post<{ sucesso: boolean; dados: ResultadoUploadMultiplo }>(
-          `/uploads/multiplo?pasta=${pasta}`,
-          formData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-            onUploadProgress: (event) => {
-              if (event.total) {
-                const percent = Math.round((event.loaded * 100) / event.total);
-                setProgresso(percent);
+            const response = await api.post<{ sucesso: boolean; dados: ResultadoUpload }>(
+              `/uploads?pasta=${pasta}`,
+              formData,
+              {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                onUploadProgress: (event) => {
+                  if (event.total) {
+                    const fileProgress = Math.round((event.loaded * 100) / event.total);
+                    const totalProgress = Math.round(((i + fileProgress / 100) / arquivos.length) * 100);
+                    setProgresso(totalProgress);
+                  }
+                },
               }
-            },
-          }
-        );
+            );
 
-        // Combinar erros de validacao com erros do servidor
-        const resultado = response.data.dados;
-        if (errosValidacao.length > 0) {
-          resultado.erros = [...(resultado.erros || []), ...errosValidacao];
+            enviados.push(response.data.dados);
+          } catch {
+            erros.push({ arquivo: arquivo.name, erro: 'Falha no upload' });
+          }
         }
 
-        return resultado;
+        if (enviados.length === 0 && erros.length > 0) {
+          setErro('Todos os arquivos falharam');
+        }
+
+        return { enviados, erros: erros.length > 0 ? erros : undefined };
       } catch (err) {
         const mensagem = err instanceof Error ? err.message : 'Erro ao fazer upload';
         setErro(mensagem);
@@ -250,28 +247,12 @@ export function useUpload() {
   // ---------------------------------------------------------------------------
   const excluir = useCallback(async (chave: string): Promise<boolean> => {
     try {
-      await api.delete(`/uploads/${chave}`);
+      await api.delete('/uploads', { data: { chave } });
       return true;
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro ao excluir arquivo';
       setErro(mensagem);
       return false;
-    }
-  }, []);
-
-  // ---------------------------------------------------------------------------
-  // Obter URL Assinada
-  // ---------------------------------------------------------------------------
-  const obterUrl = useCallback(async (chave: string): Promise<string | null> => {
-    try {
-      const response = await api.get<{ sucesso: boolean; dados: { url: string } }>(
-        `/uploads/url/${chave}`
-      );
-      return response.data.dados.url;
-    } catch (err) {
-      const mensagem = err instanceof Error ? err.message : 'Erro ao obter URL';
-      setErro(mensagem);
-      return null;
     }
   }, []);
 
@@ -298,7 +279,6 @@ export function useUpload() {
     upload,
     uploadMultiplo,
     excluir,
-    obterUrl,
     obterInfo,
     carregando,
     progresso,
@@ -307,56 +287,3 @@ export function useUpload() {
   };
 }
 
-// =============================================================================
-// Hook para Upload de Avatar
-// =============================================================================
-
-export function useUploadAvatar() {
-  const { upload, carregando, progresso, erro, limparErro } = useUpload();
-
-  const uploadAvatar = useCallback(
-    async (arquivo: File): Promise<ResultadoUpload | null> => {
-      return upload(arquivo, 'avatares');
-    },
-    [upload]
-  );
-
-  return {
-    uploadAvatar,
-    carregando,
-    progresso,
-    erro,
-    limparErro,
-  };
-}
-
-// =============================================================================
-// Hook para Upload de Midia (Conversa)
-// =============================================================================
-
-export function useUploadMidia() {
-  const { upload, uploadMultiplo, carregando, progresso, erro, limparErro } = useUpload();
-
-  const uploadMidia = useCallback(
-    async (arquivo: File): Promise<ResultadoUpload | null> => {
-      return upload(arquivo, 'midias');
-    },
-    [upload]
-  );
-
-  const uploadMidias = useCallback(
-    async (arquivos: File[]): Promise<ResultadoUploadMultiplo | null> => {
-      return uploadMultiplo(arquivos, 'midias');
-    },
-    [uploadMultiplo]
-  );
-
-  return {
-    uploadMidia,
-    uploadMidias,
-    carregando,
-    progresso,
-    erro,
-    limparErro,
-  };
-}

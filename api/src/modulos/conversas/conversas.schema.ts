@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComOrdenacaoSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Enums
@@ -29,18 +30,15 @@ export const atualizarConversaBodySchema = z.object({
   status: z.enum(['ABERTA', 'EM_ATENDIMENTO', 'AGUARDANDO', 'RESOLVIDA', 'ARQUIVADA']).optional(),
 });
 
-export const listarConversasQuerySchema = z.object({
-  pagina: z.coerce.number().int().positive().default(1),
-  limite: z.coerce.number().int().positive().max(100).default(20),
+export const listarConversasQuerySchema = paginacaoComOrdenacaoSchema.extend({
+  ordem: z.enum(['asc', 'desc']).default('desc'),
   status: z.enum(['ABERTA', 'EM_ATENDIMENTO', 'AGUARDANDO', 'RESOLVIDA', 'ARQUIVADA']).optional(),
   conexaoId: z.string().uuid().optional(),
   usuarioId: z.string().uuid().optional(),
   equipeId: z.string().uuid().optional(),
   contatoId: z.string().uuid().optional(),
-  busca: z.string().optional(),
   apenasMinhas: z.coerce.boolean().optional(),
   ordenarPor: z.enum(['ultimaMensagemEm', 'criadoEm']).default('ultimaMensagemEm'),
-  ordem: z.enum(['asc', 'desc']).default('desc'),
 });
 
 export const transferirConversaBodySchema = z.object({

@@ -272,7 +272,7 @@ vi.mock('../infraestrutura/filas/dashboard.js', () => ({
 // =============================================================================
 
 process.env.NODE_ENV = 'test';
-process.env.PORT = '3333';
+process.env.PORT = '5000';
 process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
 process.env.REDIS_URL = 'redis://localhost:6379';
 process.env.JWT_SECRET = 'test-jwt-secret-with-at-least-32-chars';

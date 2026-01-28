@@ -12,8 +12,6 @@ export {
 } from './useSocket';
 export {
   useUpload,
-  useUploadAvatar,
-  useUploadMidia,
   formatarTamanho,
   validarArquivo,
   LIMITES_UPLOAD,

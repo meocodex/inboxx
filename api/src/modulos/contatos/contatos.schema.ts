@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComOrdenacaoSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Validacao
@@ -24,13 +25,10 @@ export const atualizarContatoBodySchema = z.object({
   camposPersonalizados: z.record(z.unknown()).optional().nullable(),
 });
 
-export const listarContatosQuerySchema = z.object({
-  pagina: z.coerce.number().int().positive().default(1),
-  limite: z.coerce.number().int().positive().max(100).default(20),
-  busca: z.string().optional(),
+export const listarContatosQuerySchema = paginacaoComOrdenacaoSchema.extend({
+  ordem: z.enum(['asc', 'desc']).default('desc'),
   etiquetaId: z.string().uuid().optional(),
   ordenarPor: z.enum(['nome', 'telefone', 'criadoEm']).default('criadoEm'),
-  ordem: z.enum(['asc', 'desc']).default('desc'),
 });
 
 export const adicionarEtiquetaBodySchema = z.object({

@@ -139,7 +139,7 @@ export default function Kanban() {
 
   const criarCartaoMutation = useMutation({
     mutationFn: ({ colunaId, dados }: { colunaId: string; dados: CartaoForm }) =>
-      kanbanServico.criarCartao(colunaId, dados),
+      kanbanServico.criarCartao(quadroSelecionadoId!, colunaId, dados),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kanban', 'quadro', quadroSelecionadoId] });
       mostrarSucesso('Cartao criado', 'O cartao foi criado com sucesso');
@@ -149,8 +149,8 @@ export default function Kanban() {
   });
 
   const atualizarCartaoMutation = useMutation({
-    mutationFn: ({ id, dados }: { id: string; dados: CartaoForm }) =>
-      kanbanServico.atualizarCartao(id, dados),
+    mutationFn: ({ id, colunaId, dados }: { id: string; colunaId: string; dados: CartaoForm }) =>
+      kanbanServico.atualizarCartao(quadroSelecionadoId!, colunaId, id, dados),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kanban', 'quadro', quadroSelecionadoId] });
       mostrarSucesso('Cartao atualizado', 'O cartao foi atualizado');
@@ -160,8 +160,8 @@ export default function Kanban() {
   });
 
   const moverCartaoMutation = useMutation({
-    mutationFn: ({ cartaoId, colunaDestinoId, ordem }: { cartaoId: string; colunaDestinoId: string; ordem: number }) =>
-      kanbanServico.moverCartao(cartaoId, { colunaDestinoId, ordem }),
+    mutationFn: ({ cartaoId, colunaOrigemId, colunaDestinoId, ordem }: { cartaoId: string; colunaOrigemId: string; colunaDestinoId: string; ordem: number }) =>
+      kanbanServico.moverCartao(quadroSelecionadoId!, colunaOrigemId, cartaoId, { colunaDestinoId, ordem }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kanban', 'quadro', quadroSelecionadoId] });
     },
@@ -169,7 +169,8 @@ export default function Kanban() {
   });
 
   const excluirCartaoMutation = useMutation({
-    mutationFn: kanbanServico.excluirCartao,
+    mutationFn: ({ cartaoId, colunaId }: { cartaoId: string; colunaId: string }) =>
+      kanbanServico.excluirCartao(quadroSelecionadoId!, colunaId, cartaoId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kanban', 'quadro', quadroSelecionadoId] });
       mostrarSucesso('Cartao excluido', 'O cartao foi excluido');
@@ -205,13 +206,17 @@ export default function Kanban() {
 
   const handleAtualizarCartao = (dados: CartaoForm) => {
     if (cartaoEditando) {
-      atualizarCartaoMutation.mutate({ id: cartaoEditando.id, dados });
+      atualizarCartaoMutation.mutate({ id: cartaoEditando.id, colunaId: cartaoEditando.colunaId, dados });
     }
   };
 
   const handleDropCartao = useCallback((cartaoId: string, colunaDestinoId: string, ordem: number) => {
-    moverCartaoMutation.mutate({ cartaoId, colunaDestinoId, ordem });
-  }, [moverCartaoMutation]);
+    // Find the source column from current quadro data
+    const colunaOrigemId = quadroAtual?.colunas.find(
+      col => col.cartoes.some(c => c.id === cartaoId)
+    )?.id || colunaDestinoId;
+    moverCartaoMutation.mutate({ cartaoId, colunaOrigemId, colunaDestinoId, ordem });
+  }, [moverCartaoMutation, quadroAtual]);
 
   const handleEditarCartao = useCallback((cartao: Cartao) => {
     setCartaoEditando(cartao);
@@ -239,7 +244,7 @@ export default function Kanban() {
     }
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 p-6">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => setQuadroSelecionadoId(null)}>
@@ -267,7 +272,7 @@ export default function Kanban() {
                     cartaoForm.reset({ titulo: '', descricao: '', valor: 0 });
                   }}
                   onEditarCartao={handleEditarCartao}
-                  onExcluirCartao={(id) => excluirCartaoMutation.mutate(id)}
+                  onExcluirCartao={(cartaoId) => excluirCartaoMutation.mutate({ cartaoId, colunaId: coluna.id })}
                   onEditarColuna={() => {}}
                   onExcluirColuna={() => {}}
                   onDropCartao={handleDropCartao}
@@ -329,7 +334,7 @@ export default function Kanban() {
   // Render - Lista de Quadros
   // ---------------------------------------------------------------------------
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Kanban</h1>

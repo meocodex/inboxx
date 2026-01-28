@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { lembretesServico } from './lembretes.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   criarLembreteBodySchema,
   atualizarLembreteBodySchema,
@@ -34,11 +34,7 @@ export async function lembretesRotas(app: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = listarLembretesQuerySchema.parse(request.query);
       const resultado = await lembretesServico.listar(
@@ -66,11 +62,7 @@ export async function lembretesRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { compromissoId: string; id: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const lembrete = await lembretesServico.obterPorId(
         clienteId,
@@ -97,11 +89,7 @@ export async function lembretesRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { compromissoId: string }; Body: CriarLembreteDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = criarLembreteBodySchema.parse(request.body);
       const lembrete = await lembretesServico.criar(
@@ -136,11 +124,7 @@ export async function lembretesRotas(app: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = atualizarLembreteBodySchema.parse(request.body);
       const lembrete = await lembretesServico.atualizar(
@@ -170,11 +154,7 @@ export async function lembretesRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { compromissoId: string; id: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       await lembretesServico.excluir(
         clienteId,

@@ -52,19 +52,6 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // Conversation-specific colors
-        conv: {
-          'bg-primary': 'hsl(var(--conv-bg-primary))',
-          'bg-secondary': 'hsl(var(--conv-bg-secondary))',
-          'bg-tertiary': 'hsl(var(--conv-bg-tertiary))',
-          'bg-hover': 'hsl(var(--conv-bg-hover))',
-          border: 'hsl(var(--conv-border))',
-          'border-light': 'hsl(var(--conv-border-light))',
-          'text-primary': 'hsl(var(--conv-text-primary))',
-          'text-secondary': 'hsl(var(--conv-text-secondary))',
-          'text-muted': 'hsl(var(--conv-text-muted))',
-          accent: 'hsl(var(--conv-accent))',
-        },
         // Channel colors
         whatsapp: 'hsl(var(--whatsapp))',
         instagram: 'hsl(var(--instagram))',
@@ -75,13 +62,9 @@ const config: Config = {
         busy: 'hsl(var(--busy))',
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
-        'conv-sm': 'var(--radius-sm)',
-        'conv-md': 'var(--radius-md)',
-        'conv-lg': 'var(--radius-lg)',
-        'conv-full': 'var(--radius-full)',
+        lg: '16px',
+        md: '10px',
+        sm: '6px',
       },
       keyframes: {
         'accordion-down': {

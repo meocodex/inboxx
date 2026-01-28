@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComBuscaSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Respostas Rápidas
@@ -32,10 +33,7 @@ export const atualizarRespostaRapidaBodySchema = z.object({
 });
 
 // Schema para listar respostas rápidas
-export const listarRespostasRapidasQuerySchema = z.object({
-  pagina: z.coerce.number().min(1).default(1),
-  limite: z.coerce.number().min(1).max(100).default(20),
-  busca: z.string().optional(),
+export const listarRespostasRapidasQuerySchema = paginacaoComBuscaSchema.extend({
   categoria: z.string().optional(),
 });
 

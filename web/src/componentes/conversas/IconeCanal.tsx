@@ -85,7 +85,7 @@ export const IconeCanal = memo(({
       case TipoCanal.FACEBOOK:
         return <FacebookIcon size={size} className="text-facebook" />;
       default:
-        return <MessageCircle size={size} className="text-conv-text-muted" />;
+        return <MessageCircle size={size} className="text-muted-foreground" />;
     }
   };
 
@@ -98,7 +98,7 @@ export const IconeCanal = memo(({
       case TipoCanal.FACEBOOK:
         return 'bg-facebook/15';
       default:
-        return 'bg-conv-bg-tertiary';
+        return 'bg-secondary';
     }
   };
 
@@ -106,7 +106,7 @@ export const IconeCanal = memo(({
     return (
       <div
         className={cn(
-          'flex items-center justify-center rounded-conv-md',
+          'flex items-center justify-center rounded-md',
           getBgClass(),
           tamanho === 'sm' && 'h-6 w-6',
           tamanho === 'md' && 'h-8 w-8',

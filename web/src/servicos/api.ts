@@ -1,11 +1,10 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 import type { RespostaErro } from '@/tipos';
+import { API_URL } from '@/configuracao/env';
 
 // =============================================================================
 // Configuração do Cliente HTTP
 // =============================================================================
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_URL,

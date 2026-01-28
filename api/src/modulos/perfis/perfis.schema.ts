@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComOrdenacaoSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Validacao
@@ -16,12 +17,8 @@ export const atualizarPerfilBodySchema = z.object({
   permissoes: z.array(z.string()).min(1, 'Perfil deve ter pelo menos uma permissao').optional(),
 });
 
-export const listarPerfisQuerySchema = z.object({
-  pagina: z.coerce.number().int().positive().default(1),
-  limite: z.coerce.number().int().positive().max(100).default(20),
-  busca: z.string().optional(),
+export const listarPerfisQuerySchema = paginacaoComOrdenacaoSchema.extend({
   ordenarPor: z.enum(['nome', 'criadoEm']).default('nome'),
-  ordem: z.enum(['asc', 'desc']).default('asc'),
 });
 
 // =============================================================================

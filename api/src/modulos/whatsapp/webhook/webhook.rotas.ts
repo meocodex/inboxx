@@ -1,10 +1,21 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { z } from 'zod';
 
 import {
   verificarWebhookMeta,
   receberWebhookMeta,
   receberWebhookUaiZap,
 } from './webhook.controlador.js';
+
+const metaQuerySchema = z.object({
+  'hub.mode': z.string().optional(),
+  'hub.verify_token': z.string().optional(),
+  'hub.challenge': z.string().optional(),
+});
+
+const uaizapParamsSchema = z.object({
+  instanciaId: z.string(),
+});
 
 // =============================================================================
 // Rotas de Webhook
@@ -20,14 +31,7 @@ export async function webhookRotas(app: FastifyInstance): Promise<void> {
     '/meta',
     {
       schema: {
-        querystring: {
-          type: 'object',
-          properties: {
-            'hub.mode': { type: 'string' },
-            'hub.verify_token': { type: 'string' },
-            'hub.challenge': { type: 'string' },
-          },
-        },
+        querystring: metaQuerySchema,
       },
     },
     verificarWebhookMeta as (req: FastifyRequest, reply: FastifyReply) => Promise<void>
@@ -45,13 +49,7 @@ export async function webhookRotas(app: FastifyInstance): Promise<void> {
     '/uaizap/:instanciaId',
     {
       schema: {
-        params: {
-          type: 'object',
-          properties: {
-            instanciaId: { type: 'string' },
-          },
-          required: ['instanciaId'],
-        },
+        params: uaizapParamsSchema,
       },
     },
     receberWebhookUaiZap as (req: FastifyRequest, reply: FastifyReply) => Promise<void>

@@ -15,7 +15,8 @@
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:migrate": "drizzle-kit migrate",
     "drizzle:push": "drizzle-kit push",
-    "drizzle:studio": "drizzle-kit studio"
+    "drizzle:studio": "drizzle-kit studio",
+    "build:full": "cd ../web && npm run build && cp -r dist/* ../api/public/ && cd ../api && tsc"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.974.0",
@@ -53,7 +54,7 @@
     "meilisearch": "^0.55.0",
     "mime-types": "^3.0.2",
     "pino": "^9.14.0",
-    "pino-loki": "^3.0.0",
+
     "pino-pretty": "^11.3.0",
     "postgres": "^3.4.8",
     "prom-client": "^15.1.3",

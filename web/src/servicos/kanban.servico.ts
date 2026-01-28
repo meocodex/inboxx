@@ -56,46 +56,46 @@ export const kanbanServico = {
     return response.data.dados;
   },
 
-  async atualizarColuna(colunaId: string, dados: Partial<CriarColunaDTO>): Promise<Coluna> {
+  async atualizarColuna(quadroId: string, colunaId: string, dados: Partial<CriarColunaDTO>): Promise<Coluna> {
     const response = await api.put<RespostaApi<Coluna>>(
-      `/kanban/colunas/${colunaId}`,
+      `/kanban/quadros/${quadroId}/colunas/${colunaId}`,
       dados
     );
     return response.data.dados;
   },
 
-  async excluirColuna(colunaId: string): Promise<void> {
-    await api.delete(`/kanban/colunas/${colunaId}`);
+  async excluirColuna(quadroId: string, colunaId: string): Promise<void> {
+    await api.delete(`/kanban/quadros/${quadroId}/colunas/${colunaId}`);
   },
 
   // ---------------------------------------------------------------------------
   // Cartões
   // ---------------------------------------------------------------------------
-  async criarCartao(colunaId: string, dados: CriarCartaoDTO): Promise<Cartao> {
+  async criarCartao(quadroId: string, colunaId: string, dados: CriarCartaoDTO): Promise<Cartao> {
     const response = await api.post<RespostaApi<Cartao>>(
-      `/kanban/colunas/${colunaId}/cartoes`,
+      `/kanban/quadros/${quadroId}/colunas/${colunaId}/cartoes`,
       dados
     );
     return response.data.dados;
   },
 
-  async atualizarCartao(cartaoId: string, dados: AtualizarCartaoDTO): Promise<Cartao> {
+  async atualizarCartao(quadroId: string, colunaId: string, cartaoId: string, dados: AtualizarCartaoDTO): Promise<Cartao> {
     const response = await api.put<RespostaApi<Cartao>>(
-      `/kanban/cartoes/${cartaoId}`,
+      `/kanban/quadros/${quadroId}/colunas/${colunaId}/cartoes/${cartaoId}`,
       dados
     );
     return response.data.dados;
   },
 
-  async moverCartao(cartaoId: string, dados: MoverCartaoDTO): Promise<Cartao> {
+  async moverCartao(quadroId: string, colunaId: string, cartaoId: string, dados: MoverCartaoDTO): Promise<Cartao> {
     const response = await api.post<RespostaApi<Cartao>>(
-      `/kanban/cartoes/${cartaoId}/mover`,
+      `/kanban/quadros/${quadroId}/colunas/${colunaId}/cartoes/${cartaoId}/mover`,
       dados
     );
     return response.data.dados;
   },
 
-  async excluirCartao(cartaoId: string): Promise<void> {
-    await api.delete(`/kanban/cartoes/${cartaoId}`);
+  async excluirCartao(quadroId: string, colunaId: string, cartaoId: string): Promise<void> {
+    await api.delete(`/kanban/quadros/${quadroId}/colunas/${colunaId}/cartoes/${cartaoId}`);
   },
 };

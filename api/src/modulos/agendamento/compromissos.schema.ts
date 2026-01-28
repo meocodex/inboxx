@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComBuscaSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Compromissos
@@ -28,13 +29,10 @@ export const atualizarCompromissoBodySchema = z.object({
   lembreteMin: z.number().int().min(5).max(10080).optional().nullable(),
 });
 
-export const listarCompromissosQuerySchema = z.object({
-  pagina: z.coerce.number().int().min(1).default(1),
-  limite: z.coerce.number().int().min(1).max(100).default(20),
+export const listarCompromissosQuerySchema = paginacaoComBuscaSchema.extend({
   dataInicio: z.string().optional(),
   dataFim: z.string().optional(),
   contatoId: z.string().uuid().optional(),
-  busca: z.string().optional(),
 });
 
 // =============================================================================

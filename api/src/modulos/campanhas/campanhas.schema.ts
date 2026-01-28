@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComBuscaSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Campanhas
@@ -50,10 +51,7 @@ export const atualizarCampanhaBodySchema = z.object({
 });
 
 // Schema para listar campanhas
-export const listarCampanhasQuerySchema = z.object({
-  pagina: z.coerce.number().min(1).default(1),
-  limite: z.coerce.number().min(1).max(100).default(20),
-  busca: z.string().optional(),
+export const listarCampanhasQuerySchema = paginacaoComBuscaSchema.extend({
   status: statusCampanhaEnum.optional(),
 });
 

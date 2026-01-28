@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { dashboardServico } from './dashboard.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 
 // =============================================================================
 // Rotas de Dashboard
@@ -17,11 +17,7 @@ export async function dashboardRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('relatorios:visualizar')],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dashboard = await dashboardServico.geral(clienteId);
 
@@ -44,11 +40,7 @@ export async function dashboardRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Querystring: { limite?: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const limite = request.query.limite ? parseInt(request.query.limite, 10) : 10;
       const atividades = await dashboardServico.atividadesRecentes(clienteId, limite);
@@ -69,11 +61,7 @@ export async function dashboardRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('relatorios:visualizar')],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const grafico = await dashboardServico.graficoConversas(clienteId);
 
@@ -93,11 +81,7 @@ export async function dashboardRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('relatorios:visualizar')],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const resumo = await dashboardServico.resumoKanban(clienteId);
 

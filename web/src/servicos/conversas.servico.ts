@@ -48,17 +48,17 @@ export const conversasServico = {
   // ---------------------------------------------------------------------------
   async atribuir(id: string, dados: AtribuirAtendenteDTO): Promise<Conversa> {
     const response = await api.post<RespostaApi<Conversa>>(
-      `/conversas/${id}/atribuir`,
+      `/conversas/${id}/transferir`,
       dados
     );
     return response.data.dados;
   },
 
   // ---------------------------------------------------------------------------
-  // Encerrar Conversa
+  // Resolver Conversa
   // ---------------------------------------------------------------------------
-  async encerrar(id: string): Promise<Conversa> {
-    const response = await api.post<RespostaApi<Conversa>>(`/conversas/${id}/encerrar`);
+  async resolver(id: string): Promise<Conversa> {
+    const response = await api.post<RespostaApi<Conversa>>(`/conversas/${id}/resolver`);
     return response.data.dados;
   },
 

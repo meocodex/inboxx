@@ -55,36 +55,19 @@ export const conexoesServico = {
   },
 
   // ---------------------------------------------------------------------------
-  // Conectar (Gerar QR Code)
+  // Testar Conexão
   // ---------------------------------------------------------------------------
-  async conectar(id: string): Promise<{ qrCode?: string }> {
-    const response = await api.post<RespostaApi<{ qrCode?: string }>>(
-      `/conexoes/${id}/conectar`
+  async testar(id: string): Promise<{ status: string; conectado: boolean }> {
+    const response = await api.post<RespostaApi<{ status: string; conectado: boolean }>>(
+      `/conexoes/${id}/testar`
     );
     return response.data.dados;
   },
 
   // ---------------------------------------------------------------------------
-  // Desconectar
+  // Atualizar Status (ativar/desativar)
   // ---------------------------------------------------------------------------
-  async desconectar(id: string): Promise<void> {
-    await api.post(`/conexoes/${id}/desconectar`);
-  },
-
-  // ---------------------------------------------------------------------------
-  // Sincronizar
-  // ---------------------------------------------------------------------------
-  async sincronizar(id: string): Promise<void> {
-    await api.post(`/conexoes/${id}/sincronizar`);
-  },
-
-  // ---------------------------------------------------------------------------
-  // Verificar Status
-  // ---------------------------------------------------------------------------
-  async verificarStatus(id: string): Promise<{ status: string; conectado: boolean }> {
-    const response = await api.get<RespostaApi<{ status: string; conectado: boolean }>>(
-      `/conexoes/${id}/status`
-    );
-    return response.data.dados;
+  async atualizarStatus(id: string, ativo: boolean): Promise<void> {
+    await api.patch(`/conexoes/${id}/status`, { ativo });
   },
 };

@@ -19,7 +19,7 @@ import { ErroMensagem, Vazio } from '@/componentes/comum/ErroMensagem';
 // Tipos
 // =============================================================================
 
-type TipoRelatorio = 'conversas' | 'atendentes' | 'campanhas';
+type TipoRelatorio = 'conversas' | 'kanban' | 'campanhas';
 
 // =============================================================================
 // Componente Card Métrica
@@ -70,13 +70,13 @@ export default function Relatorios() {
   });
 
   const {
-    data: atendentes,
-    isLoading: carregandoAtendentes,
-    error: erroAtendentes,
+    data: kanban,
+    isLoading: carregandoKanban,
+    error: erroKanban,
   } = useQuery({
-    queryKey: ['relatorios', 'atendentes'],
-    queryFn: () => relatoriosServico.atendentes(),
-    enabled: tipoRelatorio === 'atendentes',
+    queryKey: ['relatorios', 'kanban'],
+    queryFn: () => relatoriosServico.kanban(),
+    enabled: tipoRelatorio === 'kanban',
   });
 
   const {
@@ -152,31 +152,31 @@ export default function Relatorios() {
       );
     }
 
-    if (tipoRelatorio === 'atendentes') {
-      if (carregandoAtendentes) return <Carregando tamanho="lg" texto="Carregando..." />;
-      if (erroAtendentes) return <ErroMensagem titulo="Erro" mensagem="Falha ao carregar" />;
-      if (!atendentes || atendentes.length === 0) {
-        return <Vazio icone={<Users className="h-12 w-12" />} titulo="Sem dados" descricao="Nenhum atendente" />;
+    if (tipoRelatorio === 'kanban') {
+      if (carregandoKanban) return <Carregando tamanho="lg" texto="Carregando..." />;
+      if (erroKanban) return <ErroMensagem titulo="Erro" mensagem="Falha ao carregar" />;
+      if (!kanban || kanban.length === 0) {
+        return <Vazio icone={<Users className="h-12 w-12" />} titulo="Sem dados" descricao="Nenhum dado de kanban" />;
       }
 
       return (
         <Card>
           <CardHeader>
-            <CardTitle>Desempenho dos Atendentes</CardTitle>
+            <CardTitle>Relatorio Kanban</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {atendentes.map((atendente) => (
-                <div key={atendente.atendenteId} className="flex items-center justify-between py-3 border-b last:border-0">
+              {kanban.map((item, index) => (
+                <div key={index} className="flex items-center justify-between py-3 border-b last:border-0">
                   <div>
-                    <p className="font-medium">{atendente.nome}</p>
+                    <p className="font-medium">{item.nome}</p>
                     <p className="text-sm text-muted-foreground">
-                      {atendente.conversasAtendidas} conversas | {atendente.mensagensEnviadas} mensagens
+                      {item.conversasAtendidas} itens | {item.mensagensEnviadas} movimentacoes
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm">Tempo medio resposta</p>
-                    <p className="font-medium">{Math.round(atendente.tempoMedioResposta / 60)} min</p>
+                    <p className="text-sm">Tempo medio</p>
+                    <p className="font-medium">{Math.round(item.tempoMedioResposta / 60)} min</p>
                   </div>
                 </div>
               ))}
@@ -226,7 +226,7 @@ export default function Relatorios() {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Relatorios</h1>
@@ -243,11 +243,11 @@ export default function Relatorios() {
           Conversas
         </Button>
         <Button
-          variant={tipoRelatorio === 'atendentes' ? 'default' : 'outline'}
-          onClick={() => setTipoRelatorio('atendentes')}
+          variant={tipoRelatorio === 'kanban' ? 'default' : 'outline'}
+          onClick={() => setTipoRelatorio('kanban')}
         >
           <Users className="mr-2 h-4 w-4" />
-          Atendentes
+          Kanban
         </Button>
         <Button
           variant={tipoRelatorio === 'campanhas' ? 'default' : 'outline'}

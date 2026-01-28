@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
 import { perfisServico } from './perfis.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   criarPerfilBodySchema,
   atualizarPerfilBodySchema,
@@ -86,11 +86,7 @@ export async function perfisRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('perfis:criar')],
     },
     async (request: FastifyRequest<{ Body: CriarPerfilDTO }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = criarPerfilBodySchema.parse(request.body);
       const perfil = await perfisServico.criar(clienteId, dados);
@@ -115,11 +111,7 @@ export async function perfisRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { id: string }; Body: AtualizarPerfilDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = atualizarPerfilBodySchema.parse(request.body);
       const perfil = await perfisServico.atualizar(clienteId, request.params.id, dados);
@@ -141,11 +133,7 @@ export async function perfisRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('perfis:excluir')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       await perfisServico.excluir(clienteId, request.params.id);
 
@@ -168,11 +156,7 @@ export async function perfisRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { id: string }; Body: { nome: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const { nome } = z.object({ nome: z.string().min(2).max(100) }).parse(request.body);
       const perfil = await perfisServico.duplicar(clienteId, request.params.id, nome);

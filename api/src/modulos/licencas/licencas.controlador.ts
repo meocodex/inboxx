@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { licencasServico } from './licencas.servico.js';
 import { obterIpServidor } from '../../compartilhado/guardas/index.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 
 // =============================================================================
 // Schemas
@@ -29,14 +29,7 @@ export async function licencasRotas(app: FastifyInstance) {
       preHandler: [app.autenticar],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      // Super admin precisa especificar clienteId
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao(
-          'Super admin deve especificar um cliente para verificar licenca'
-        );
-      }
+      const clienteId = extrairClienteId(request);
 
       const status = await licencasServico.obterStatus(clienteId);
 
@@ -54,13 +47,7 @@ export async function licencasRotas(app: FastifyInstance) {
     '/verificar',
     {
       schema: {
-        body: {
-          type: 'object',
-          required: ['chave'],
-          properties: {
-            chave: { type: 'string', minLength: 1 },
-          },
-        },
+        body: verificarBodySchema,
       },
     },
     async (request: FastifyRequest<{ Body: VerificarBody }>, reply: FastifyReply) => {

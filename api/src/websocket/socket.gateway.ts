@@ -72,7 +72,7 @@ let io: Server | null = null;
 export function criarSocketGateway(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
     cors: {
-      origin: env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',') : ['http://localhost:5173'],
+      origin: env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',') : ['http://localhost:5000'],
       credentials: true,
     },
     pingTimeout: 60000,

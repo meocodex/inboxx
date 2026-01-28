@@ -48,9 +48,9 @@ export const relatoriosServico = {
     return response.data.dados;
   },
 
-  async atendentes(filtros?: FiltrosRelatorio): Promise<RelatorioAtendentes[]> {
+  async kanban(filtros?: FiltrosRelatorio): Promise<RelatorioAtendentes[]> {
     const response = await api.get<RespostaApi<RelatorioAtendentes[]>>(
-      '/relatorios/atendentes',
+      '/relatorios/kanban',
       { params: filtros }
     );
     return response.data.dados;

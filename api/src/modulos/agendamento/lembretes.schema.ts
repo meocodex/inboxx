@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoBaseSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Lembretes
@@ -19,9 +20,7 @@ export const atualizarLembreteBodySchema = z.object({
   enviado: z.boolean().optional(),
 });
 
-export const listarLembretesQuerySchema = z.object({
-  pagina: z.coerce.number().int().min(1).default(1),
-  limite: z.coerce.number().int().min(1).max(100).default(20),
+export const listarLembretesQuerySchema = paginacaoBaseSchema.extend({
   pendentes: z.coerce.boolean().optional(),
 });
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComBuscaSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Validacao
@@ -20,10 +21,8 @@ export const atualizarEtiquetaBodySchema = z.object({
     .optional(),
 });
 
-export const listarEtiquetasQuerySchema = z.object({
-  pagina: z.coerce.number().int().positive().default(1),
+export const listarEtiquetasQuerySchema = paginacaoComBuscaSchema.extend({
   limite: z.coerce.number().int().positive().max(100).default(50),
-  busca: z.string().optional(),
 });
 
 // =============================================================================

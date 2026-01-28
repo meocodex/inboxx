@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComOrdenacaoSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Validacao
@@ -14,12 +15,8 @@ export const atualizarEquipeBodySchema = z.object({
   descricao: z.string().max(500).optional().nullable(),
 });
 
-export const listarEquipesQuerySchema = z.object({
-  pagina: z.coerce.number().int().positive().default(1),
-  limite: z.coerce.number().int().positive().max(100).default(20),
-  busca: z.string().optional(),
+export const listarEquipesQuerySchema = paginacaoComOrdenacaoSchema.extend({
   ordenarPor: z.enum(['nome', 'criadoEm']).default('nome'),
-  ordem: z.enum(['asc', 'desc']).default('asc'),
 });
 
 export const adicionarMembroBodySchema = z.object({

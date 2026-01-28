@@ -128,9 +128,3 @@ export const useTema = () => useUIStore((state) => state.tema);
 export const useConversaSelecionadaId = () =>
   useUIStore((state) => state.conversaSelecionadaId);
 export const usePainelInfoAberto = () => useUIStore((state) => state.painelInfoAberto);
-export const useFiltroSidebarConversas = () =>
-  useUIStore((state) => state.filtroSidebarConversas);
-export const useCanalAtivoConversas = () =>
-  useUIStore((state) => state.canalAtivoConversas);
-export const useFiltrosAvancadosAbertos = () =>
-  useUIStore((state) => state.filtrosAvancadosAbertos);

@@ -1,6 +1,6 @@
 # API Endpoints - CRM WhatsApp Omnichannel
 
-Base URL: `http://localhost:3335/api`
+Base URL: `http://localhost:5000/api`
 
 ## Autenticacao
 

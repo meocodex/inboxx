@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { quadrosServico } from './quadros.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   criarQuadroBodySchema,
   atualizarQuadroBodySchema,
@@ -25,11 +25,7 @@ export async function quadrosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('kanban:visualizar')],
     },
     async (request: FastifyRequest<{ Querystring: ListarQuadrosQuery }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = listarQuadrosQuerySchema.parse(request.query);
       const resultado = await quadrosServico.listar(clienteId, query);
@@ -50,11 +46,7 @@ export async function quadrosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('kanban:visualizar')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const quadro = await quadrosServico.obterPorId(clienteId, request.params.id);
 
@@ -74,11 +66,7 @@ export async function quadrosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('kanban:visualizar')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const estatisticas = await quadrosServico.obterEstatisticas(clienteId, request.params.id);
 
@@ -98,11 +86,7 @@ export async function quadrosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('kanban:criar')],
     },
     async (request: FastifyRequest<{ Body: CriarQuadroDTO }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = criarQuadroBodySchema.parse(request.body);
       const quadro = await quadrosServico.criar(clienteId, dados);
@@ -127,11 +111,7 @@ export async function quadrosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { id: string }; Body: AtualizarQuadroDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = atualizarQuadroBodySchema.parse(request.body);
       const quadro = await quadrosServico.atualizar(clienteId, request.params.id, dados);
@@ -153,11 +133,7 @@ export async function quadrosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('kanban:excluir')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       await quadrosServico.excluir(clienteId, request.params.id);
 

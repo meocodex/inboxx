@@ -39,7 +39,7 @@ export const RespostasRapidas = memo(({
   if (respostas.length === 0) return null;
 
   return (
-    <div className={cn('border-t border-conv-border bg-conv-bg-secondary', className)}>
+    <div className={cn('border-t border-border bg-muted', className)}>
       <ScrollArea className="w-full whitespace-nowrap">
         <div className="flex gap-2 p-3">
           {respostas.map((resposta) => (
@@ -50,10 +50,10 @@ export const RespostasRapidas = memo(({
               onClick={() => onSelecionar(resposta)}
               className={cn(
                 'shrink-0 h-8 px-3 text-xs font-medium',
-                'bg-conv-bg-tertiary border-conv-border',
-                'hover:bg-conv-bg-hover hover:border-conv-border-light',
-                'text-conv-text-secondary hover:text-conv-text-primary',
-                'rounded-conv-full transition-colors'
+                'bg-secondary border-border',
+                'hover:bg-accent hover:border-border',
+                'text-muted-foreground hover:text-foreground',
+                'rounded-full transition-colors'
               )}
             >
               {resposta.icone && <span className="mr-1.5">{resposta.icone}</span>}

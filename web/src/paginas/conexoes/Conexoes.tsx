@@ -8,11 +8,9 @@ import {
   Smartphone,
   Wifi,
   WifiOff,
-  QrCode,
   MoreHorizontal,
   RefreshCw,
   Trash2,
-  Power,
   PowerOff,
 } from 'lucide-react';
 import { conexoesServico } from '@/servicos';
@@ -73,13 +71,12 @@ const statusConfig: Record<StatusCanalConexao, { label: string; variant: 'defaul
 
 interface CardConexaoProps {
   conexao: CanalConexaoResumo;
-  onConectar: (id: string) => void;
-  onDesconectar: (id: string) => void;
-  onSincronizar: (id: string) => void;
+  onTestar: (id: string) => void;
+  onDesativar: (id: string) => void;
   onExcluir: (id: string) => void;
 }
 
-function CardConexao({ conexao, onConectar, onDesconectar, onSincronizar, onExcluir }: CardConexaoProps) {
+function CardConexao({ conexao, onTestar, onDesativar, onExcluir }: CardConexaoProps) {
   const canal = canalConfig[conexao.canal];
   const status = statusConfig[conexao.status];
 
@@ -110,23 +107,15 @@ function CardConexao({ conexao, onConectar, onDesconectar, onSincronizar, onExcl
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {conexao.status === 'DESCONECTADO' && (
-                <DropdownMenuItem onClick={() => onConectar(conexao.id)}>
-                  <Power className="mr-2 h-4 w-4 text-green-500" />
-                  Conectar
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem onClick={() => onTestar(conexao.id)}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Testar Conexao
+              </DropdownMenuItem>
               {conexao.status === 'CONECTADO' && (
-                <>
-                  <DropdownMenuItem onClick={() => onSincronizar(conexao.id)}>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Sincronizar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDesconectar(conexao.id)}>
-                    <PowerOff className="mr-2 h-4 w-4 text-orange-500" />
-                    Desconectar
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem onClick={() => onDesativar(conexao.id)}>
+                  <PowerOff className="mr-2 h-4 w-4 text-orange-500" />
+                  Desativar
+                </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => onExcluir(conexao.id)} className="text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -172,7 +161,6 @@ export default function Conexoes() {
   const { erro: mostrarErro, sucesso: mostrarSucesso } = useToast();
 
   const [modalAberto, setModalAberto] = useState(false);
-  const [qrCode, setQrCode] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Query
@@ -200,35 +188,26 @@ export default function Conexoes() {
     onError: () => mostrarErro('Erro', 'Não foi possível criar a conexão'),
   });
 
-  const conectarMutation = useMutation({
-    mutationFn: conexoesServico.conectar,
+  const testarMutation = useMutation({
+    mutationFn: conexoesServico.testar,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['conexoes'] });
-      if (data.qrCode) {
-        setQrCode(data.qrCode);
+      if (data.conectado) {
+        mostrarSucesso('Conectado', 'A conexao esta funcionando');
       } else {
-        mostrarSucesso('Conectando', 'Iniciando conexão...');
+        mostrarErro('Desconectado', `Status: ${data.status}`);
       }
     },
-    onError: () => mostrarErro('Erro', 'Não foi possível conectar'),
+    onError: () => mostrarErro('Erro', 'Nao foi possivel testar a conexao'),
   });
 
-  const desconectarMutation = useMutation({
-    mutationFn: conexoesServico.desconectar,
+  const desativarMutation = useMutation({
+    mutationFn: (id: string) => conexoesServico.atualizarStatus(id, false),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conexoes'] });
-      mostrarSucesso('Desconectado', 'A conexão foi encerrada');
+      mostrarSucesso('Desativado', 'A conexao foi desativada');
     },
-    onError: () => mostrarErro('Erro', 'Não foi possível desconectar'),
-  });
-
-  const sincronizarMutation = useMutation({
-    mutationFn: conexoesServico.sincronizar,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conexoes'] });
-      mostrarSucesso('Sincronizado', 'Dados sincronizados com sucesso');
-    },
-    onError: () => mostrarErro('Erro', 'Não foi possível sincronizar'),
+    onError: () => mostrarErro('Erro', 'Nao foi possivel desativar'),
   });
 
   const excluirMutation = useMutation({
@@ -276,7 +255,7 @@ export default function Conexoes() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -312,9 +291,8 @@ export default function Conexoes() {
             <CardConexao
               key={conexao.id}
               conexao={conexao}
-              onConectar={(id) => conectarMutation.mutate(id)}
-              onDesconectar={(id) => desconectarMutation.mutate(id)}
-              onSincronizar={(id) => sincronizarMutation.mutate(id)}
+              onTestar={(id) => testarMutation.mutate(id)}
+              onDesativar={(id) => desativarMutation.mutate(id)}
               onExcluir={(id) => excluirMutation.mutate(id)}
             />
           ))}
@@ -382,30 +360,6 @@ export default function Conexoes() {
         </div>
       )}
 
-      {/* Modal QR Code */}
-      {qrCode && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <QrCode className="h-5 w-5" />
-                Escaneie o QR Code
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center gap-4">
-              <div className="p-4 bg-white rounded-lg">
-                <img src={qrCode} alt="QR Code" className="w-64 h-64" />
-              </div>
-              <p className="text-sm text-muted-foreground text-center">
-                Abra o WhatsApp no seu celular e escaneie este código
-              </p>
-              <Button variant="outline" onClick={() => setQrCode(null)}>
-                Fechar
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

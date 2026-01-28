@@ -4,7 +4,7 @@ import { verificarToken, type JwtPayload } from '../utilitarios/criptografia.js'
 import { ErroNaoAutorizado } from '../erros/index.js';
 import { eq } from 'drizzle-orm';
 import { db } from '../../infraestrutura/banco/drizzle.servico.js';
-import { perfis } from '../../infraestrutura/banco/schema/index.js';
+import { perfis, clientes } from '../../infraestrutura/banco/schema/index.js';
 
 // =============================================================================
 // Tipos
@@ -68,10 +68,30 @@ export async function autenticacaoMiddleware(
       throw new ErroNaoAutorizado('Perfil nao encontrado');
     }
 
+    // Resolver clienteId para SUPER_ADMIN (clienteId nulo no token)
+    let clienteId = payload.clienteId;
+
+    if (!clienteId && perfil.permissoes.includes('*')) {
+      // SUPER_ADMIN: aceitar header X-Cliente-Id ou auto-selecionar primeiro cliente ativo
+      const headerClienteId = request.headers['x-cliente-id'] as string | undefined;
+      if (headerClienteId) {
+        clienteId = headerClienteId;
+      } else {
+        const [primeiroCliente] = await db
+          .select({ id: clientes.id })
+          .from(clientes)
+          .where(eq(clientes.ativo, true))
+          .limit(1);
+        if (primeiroCliente) {
+          clienteId = primeiroCliente.id;
+        }
+      }
+    }
+
     // Injetar usuario no request
     request.usuario = {
       id: payload.sub,
-      clienteId: payload.clienteId,
+      clienteId,
       perfilId: payload.perfilId,
       permissoes: perfil.permissoes,
     };

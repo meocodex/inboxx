@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { mensagensAgendadasServico } from './mensagens-agendadas.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   criarMensagemAgendadaBodySchema,
   atualizarMensagemAgendadaBodySchema,
@@ -28,11 +28,7 @@ export async function mensagensAgendadasRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Querystring: ListarMensagensAgendadasQuery }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = listarMensagensAgendadasQuerySchema.parse(request.query);
       const resultado = await mensagensAgendadasServico.listar(clienteId, query);
@@ -53,11 +49,7 @@ export async function mensagensAgendadasRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('campanhas:visualizar')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const mensagem = await mensagensAgendadasServico.obterPorId(
         clienteId,
@@ -83,11 +75,7 @@ export async function mensagensAgendadasRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Body: CriarMensagemAgendadaDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = criarMensagemAgendadaBodySchema.parse(request.body);
       const mensagem = await mensagensAgendadasServico.criar(clienteId, dados);
@@ -115,11 +103,7 @@ export async function mensagensAgendadasRotas(app: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = atualizarMensagemAgendadaBodySchema.parse(request.body);
       const mensagem = await mensagensAgendadasServico.atualizar(
@@ -145,11 +129,7 @@ export async function mensagensAgendadasRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('campanhas:editar')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const mensagem = await mensagensAgendadasServico.cancelar(
         clienteId,
@@ -173,11 +153,7 @@ export async function mensagensAgendadasRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('campanhas:excluir')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       await mensagensAgendadasServico.excluir(clienteId, request.params.id);
 

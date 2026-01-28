@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComOrdenacaoSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Validacao
@@ -24,15 +25,11 @@ export const atualizarUsuarioBodySchema = z.object({
   ativo: z.boolean().optional(),
 });
 
-export const listarUsuariosQuerySchema = z.object({
-  pagina: z.coerce.number().int().positive().default(1),
-  limite: z.coerce.number().int().positive().max(100).default(20),
-  busca: z.string().optional(),
+export const listarUsuariosQuerySchema = paginacaoComOrdenacaoSchema.extend({
   perfilId: z.string().uuid().optional(),
   equipeId: z.string().uuid().optional(),
   ativo: z.coerce.boolean().optional(),
   ordenarPor: z.enum(['nome', 'email', 'criadoEm', 'ultimoAcesso']).default('nome'),
-  ordem: z.enum(['asc', 'desc']).default('asc'),
 });
 
 // =============================================================================

@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { mensagensServico } from './mensagens.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   enviarMensagemBodySchema,
   listarMensagensQuerySchema,
@@ -30,11 +30,7 @@ export async function mensagensRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { conversaId: string }; Querystring: ListarMensagensQuery }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = listarMensagensQuerySchema.parse(request.query);
       const resultado = await mensagensServico.listarPorConversa(
@@ -65,11 +61,7 @@ export async function mensagensRotas(app: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = enviarMensagemBodySchema.parse({
         ...request.body,
@@ -98,11 +90,7 @@ export async function mensagensRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { conversaId: string; id: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const mensagem = await mensagensServico.obterPorId(
         clienteId,

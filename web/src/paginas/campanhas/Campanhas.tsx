@@ -47,11 +47,10 @@ interface CardCampanhaProps {
   campanha: Campanha;
   onIniciar: (id: string) => void;
   onPausar: (id: string) => void;
-  onRetomar: (id: string) => void;
   onCancelar: (id: string) => void;
 }
 
-function CardCampanha({ campanha, onIniciar, onPausar, onRetomar, onCancelar }: CardCampanhaProps) {
+function CardCampanha({ campanha, onIniciar, onPausar, onCancelar }: CardCampanhaProps) {
   const config = statusConfig[campanha.status];
   const progresso = campanha.totalContatos > 0
     ? Math.round((campanha.totalEnviados / campanha.totalContatos) * 100)
@@ -88,7 +87,7 @@ function CardCampanha({ campanha, onIniciar, onPausar, onRetomar, onCancelar }: 
                 </DropdownMenuItem>
               )}
               {campanha.status === 'PAUSADA' && (
-                <DropdownMenuItem onClick={() => onRetomar(campanha.id)}>
+                <DropdownMenuItem onClick={() => onIniciar(campanha.id)}>
                   <Play className="mr-2 h-4 w-4" />
                   Retomar
                 </DropdownMenuItem>
@@ -207,15 +206,6 @@ export default function Campanhas() {
     onError: () => mostrarErro('Erro', 'Nao foi possivel pausar a campanha'),
   });
 
-  const retomarMutation = useMutation({
-    mutationFn: campanhasServico.retomar,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['campanhas'] });
-      mostrarSucesso('Campanha retomada', 'A campanha foi retomada');
-    },
-    onError: () => mostrarErro('Erro', 'Nao foi possivel retomar a campanha'),
-  });
-
   const cancelarMutation = useMutation({
     mutationFn: campanhasServico.cancelar,
     onSuccess: () => {
@@ -241,7 +231,7 @@ export default function Campanhas() {
   const campanhas = campanhasData?.dados || [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -273,7 +263,6 @@ export default function Campanhas() {
               campanha={campanha}
               onIniciar={(id) => iniciarMutation.mutate(id)}
               onPausar={(id) => pausarMutation.mutate(id)}
-              onRetomar={(id) => retomarMutation.mutate(id)}
               onCancelar={(id) => cancelarMutation.mutate(id)}
             />
           ))}

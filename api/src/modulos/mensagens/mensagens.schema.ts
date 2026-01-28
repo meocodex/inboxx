@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoBaseSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Enums
@@ -42,8 +43,7 @@ export const enviarMensagemBodySchema = z.object({
   midiaNome: z.string().optional(),
 });
 
-export const listarMensagensQuerySchema = z.object({
-  pagina: z.coerce.number().int().positive().default(1),
+export const listarMensagensQuerySchema = paginacaoBaseSchema.extend({
   limite: z.coerce.number().int().positive().max(100).default(50),
   ordem: z.enum(['asc', 'desc']).default('desc'),
 });

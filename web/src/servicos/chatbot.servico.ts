@@ -44,12 +44,12 @@ export const chatbotServico = {
   },
 
   async ativarFluxo(id: string): Promise<Fluxo> {
-    const response = await api.post<RespostaApi<Fluxo>>(`/chatbot/fluxos/${id}/ativar`);
+    const response = await api.patch<RespostaApi<Fluxo>>(`/chatbot/fluxos/${id}/ativar`);
     return response.data.dados;
   },
 
   async desativarFluxo(id: string): Promise<Fluxo> {
-    const response = await api.post<RespostaApi<Fluxo>>(`/chatbot/fluxos/${id}/desativar`);
+    const response = await api.patch<RespostaApi<Fluxo>>(`/chatbot/fluxos/${id}/desativar`);
     return response.data.dados;
   },
 
@@ -77,13 +77,9 @@ export const chatbotServico = {
   },
 
   // ---------------------------------------------------------------------------
-  // Conexões
+  // Conexões entre Nós
   // ---------------------------------------------------------------------------
-  async criarConexao(fluxoId: string, dados: CriarConexaoDTO): Promise<void> {
-    await api.post(`/chatbot/fluxos/${fluxoId}/conexoes`, dados);
-  },
-
-  async excluirConexao(fluxoId: string, conexaoId: string): Promise<void> {
-    await api.delete(`/chatbot/fluxos/${fluxoId}/conexoes/${conexaoId}`);
+  async conectarNos(fluxoId: string, dados: CriarConexaoDTO): Promise<void> {
+    await api.post(`/chatbot/fluxos/${fluxoId}/nos/conectar`, dados);
   },
 };

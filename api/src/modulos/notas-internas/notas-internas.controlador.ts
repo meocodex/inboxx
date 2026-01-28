@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { notasInternasServico } from './notas-internas.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   criarNotaInternaBodySchema,
   listarNotasInternasQuerySchema,
@@ -29,11 +29,7 @@ export async function notasInternasRotas(app: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = listarNotasInternasQuerySchema.parse(request.query);
       const resultado = await notasInternasServico.listar(
@@ -61,11 +57,7 @@ export async function notasInternasRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { conversaId: string }; Body: CriarNotaInternaDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = criarNotaInternaBodySchema.parse(request.body);
       const nota = await notasInternasServico.criar(
@@ -95,11 +87,7 @@ export async function notasInternasRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { conversaId: string; id: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       await notasInternasServico.excluir(
         clienteId,

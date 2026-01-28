@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { usuariosServico } from './usuarios.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   criarUsuarioBodySchema,
   atualizarUsuarioBodySchema,
@@ -25,11 +25,7 @@ export async function usuariosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('usuarios:listar')],
     },
     async (request: FastifyRequest<{ Querystring: ListarUsuariosQuery }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = listarUsuariosQuerySchema.parse(request.query);
       const resultado = await usuariosServico.listar(clienteId, query);
@@ -50,11 +46,7 @@ export async function usuariosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('usuarios:visualizar')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const usuario = await usuariosServico.obterPorId(clienteId, request.params.id);
 
@@ -74,11 +66,7 @@ export async function usuariosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('usuarios:criar')],
     },
     async (request: FastifyRequest<{ Body: CriarUsuarioDTO }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = criarUsuarioBodySchema.parse(request.body);
       const usuario = await usuariosServico.criar(clienteId, dados);
@@ -103,11 +91,7 @@ export async function usuariosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { id: string }; Body: AtualizarUsuarioDTO }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = atualizarUsuarioBodySchema.parse(request.body);
       const usuario = await usuariosServico.atualizar(clienteId, request.params.id, dados);
@@ -129,11 +113,7 @@ export async function usuariosRotas(app: FastifyInstance) {
       preHandler: [app.autenticar, app.verificarPermissao('usuarios:excluir')],
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       await usuariosServico.excluir(clienteId, request.params.id);
 
@@ -156,11 +136,7 @@ export async function usuariosRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { id: string }; Body: { ativo: boolean } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const { ativo } = request.body;
       const usuario = await usuariosServico.alterarStatus(clienteId, request.params.id, ativo);

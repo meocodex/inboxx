@@ -21,14 +21,7 @@ export async function autenticacaoRotas(app: FastifyInstance) {
     '/entrar',
     {
       schema: {
-        body: {
-          type: 'object',
-          required: ['email', 'senha'],
-          properties: {
-            email: { type: 'string', format: 'email' },
-            senha: { type: 'string', minLength: 1 },
-          },
-        },
+        body: entrarBodySchema,
       },
     },
     async (request: FastifyRequest<{ Body: EntrarDTO }>, reply: FastifyReply) => {
@@ -49,13 +42,7 @@ export async function autenticacaoRotas(app: FastifyInstance) {
     '/renovar',
     {
       schema: {
-        body: {
-          type: 'object',
-          required: ['refreshToken'],
-          properties: {
-            refreshToken: { type: 'string', minLength: 1 },
-          },
-        },
+        body: renovarBodySchema,
       },
     },
     async (request: FastifyRequest<{ Body: RenovarDTO }>, reply: FastifyReply) => {

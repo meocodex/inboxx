@@ -3,7 +3,7 @@ import { z } from 'zod';
 const ambienteSchema = z.object({
   // Aplicacao
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.coerce.number().min(1).max(65535).default(3000),
+  PORT: z.coerce.number().min(1).max(65535).default(5000),
   HOST: z.string().default('0.0.0.0'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 

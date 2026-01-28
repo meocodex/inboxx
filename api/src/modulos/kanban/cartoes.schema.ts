@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComBuscaSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Cartões Kanban
@@ -31,10 +32,8 @@ export const moverCartaoBodySchema = z.object({
 });
 
 // Schema para listar cartões
-export const listarCartoesQuerySchema = z.object({
-  pagina: z.coerce.number().min(1).default(1),
-  limite: z.coerce.number().min(1).max(100).default(50),
-  busca: z.string().optional(),
+export const listarCartoesQuerySchema = paginacaoComBuscaSchema.extend({
+  limite: z.coerce.number().int().positive().max(100).default(50),
   contatoId: z.string().uuid().optional(),
 });
 

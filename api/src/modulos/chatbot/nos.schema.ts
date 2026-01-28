@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoBaseSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Nós do Chatbot
@@ -41,9 +42,8 @@ export const atualizarNoBodySchema = z.object({
 });
 
 // Schema para listar nós de um fluxo
-export const listarNosQuerySchema = z.object({
-  pagina: z.coerce.number().min(1).default(1),
-  limite: z.coerce.number().min(1).max(100).default(50),
+export const listarNosQuerySchema = paginacaoBaseSchema.extend({
+  limite: z.coerce.number().int().positive().max(100).default(50),
 });
 
 // Schema para atualizar posições em lote

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComBuscaSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Fluxos de Chatbot
@@ -28,10 +29,7 @@ export const atualizarFluxoBodySchema = z.object({
 });
 
 // Schema para listar fluxos
-export const listarFluxosQuerySchema = z.object({
-  pagina: z.coerce.number().min(1).default(1),
-  limite: z.coerce.number().min(1).max(100).default(20),
-  busca: z.string().optional(),
+export const listarFluxosQuerySchema = paginacaoComBuscaSchema.extend({
   ativo: z.coerce.boolean().optional(),
 });
 

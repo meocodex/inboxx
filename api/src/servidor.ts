@@ -11,6 +11,7 @@ import {
   validatorCompiler,
 } from 'fastify-type-provider-zod';
 import { join } from 'path';
+import { existsSync } from 'fs';
 
 import { env } from './configuracao/ambiente.js';
 import { registrarSwagger } from './configuracao/swagger.js';
@@ -78,7 +79,7 @@ export async function criarServidor(): Promise<FastifyInstance> {
   });
 
   await app.register(cors, {
-    origin: env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',') : ['http://localhost:3001'],
+    origin: env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',') : ['http://localhost:5000'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
@@ -137,13 +138,27 @@ export async function criarServidor(): Promise<FastifyInstance> {
   });
 
   // =============================================================================
-  // Static Files (Servir uploads locais)
+  // Static Files - Frontend SPA (producao)
+  // =============================================================================
+
+  const frontendPath = join(process.cwd(), 'public');
+  const temFrontend = existsSync(join(frontendPath, 'index.html'));
+
+  if (temFrontend) {
+    await app.register(fastifyStatic, {
+      root: frontendPath,
+    });
+    logger.info({ path: frontendPath }, 'Frontend SPA disponivel');
+  }
+
+  // =============================================================================
+  // Static Files - Uploads locais
   // =============================================================================
 
   await app.register(fastifyStatic, {
     root: join(process.cwd(), env.STORAGE_LOCAL_PATH || './uploads'),
     prefix: '/uploads/',
-    decorateReply: false, // Evita conflito se ja decorado
+    decorateReply: !temFrontend,
   });
 
   // =============================================================================
@@ -243,12 +258,31 @@ export async function criarServidor(): Promise<FastifyInstance> {
     { prefix: '/api' }
   );
 
-  // Rota raiz
-  app.get('/', async () => ({
-    nome: 'CRM WhatsApp Omnichannel API',
-    versao: '1.0.0',
-    documentacao: '/api/saude',
-  }));
+  // =============================================================================
+  // SPA Fallback (producao: retorna index.html para rotas do React)
+  // =============================================================================
+
+  app.setNotFoundHandler(async (request, reply) => {
+    // Rotas da API: retorna 404 JSON
+    if (request.url.startsWith('/api/')) {
+      return reply.status(404).send({
+        sucesso: false,
+        erro: { codigo: 'ROTA_NAO_ENCONTRADA', mensagem: 'Rota nao encontrada' },
+      });
+    }
+
+    // SPA fallback: retorna index.html para rotas do frontend
+    if (temFrontend) {
+      return reply.sendFile('index.html');
+    }
+
+    // Dev sem frontend: mostra info da API
+    return reply.send({
+      nome: 'CRM WhatsApp Omnichannel API',
+      versao: '1.0.0',
+      documentacao: '/api/saude',
+    });
+  });
 
   // =============================================================================
   // Hooks

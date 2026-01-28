@@ -61,9 +61,9 @@ export const ItemConversa = memo(({ conversa, selecionada, onClick, canal }: Ite
       onClick={onClick}
       className={cn(
         'w-full flex items-start gap-3 p-3 text-left transition-colors relative',
-        'hover:bg-conv-bg-hover',
-        selecionada && 'bg-conv-bg-tertiary',
-        temNaoLidas && 'border-l-[3px] border-l-conv-accent'
+        'hover:bg-accent',
+        selecionada && 'bg-secondary',
+        temNaoLidas && 'border-l-[3px] border-l-primary'
       )}
     >
       {/* Avatar com icone de canal */}
@@ -80,7 +80,7 @@ export const ItemConversa = memo(({ conversa, selecionada, onClick, canal }: Ite
 
         {/* Icone do canal */}
         {canal && (
-          <div className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center h-[18px] w-[18px] rounded-full bg-conv-bg-secondary border border-conv-border">
+          <div className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center h-[18px] w-[18px] rounded-full bg-muted border border-border">
             <IconeCanal canal={canal} tamanho="sm" />
           </div>
         )}
@@ -92,11 +92,11 @@ export const ItemConversa = memo(({ conversa, selecionada, onClick, canal }: Ite
         <div className="flex items-center justify-between gap-2">
           <span className={cn(
             'text-sm truncate',
-            temNaoLidas ? 'font-semibold text-conv-text-primary' : 'font-medium text-conv-text-primary'
+            temNaoLidas ? 'font-semibold text-foreground' : 'font-medium text-foreground'
           )}>
             {contato.nome}
           </span>
-          <span className="text-[11px] text-conv-text-muted shrink-0">
+          <span className="text-[11px] text-muted-foreground shrink-0">
             {formatarTempoRelativo(atualizadoEm)}
           </span>
         </div>
@@ -105,10 +105,10 @@ export const ItemConversa = memo(({ conversa, selecionada, onClick, canal }: Ite
         <div className="flex items-center justify-between gap-2 mt-1">
           <p className={cn(
             'text-[13px] truncate',
-            temNaoLidas ? 'text-conv-text-secondary font-medium' : 'text-conv-text-muted'
+            temNaoLidas ? 'text-muted-foreground font-medium' : 'text-muted-foreground'
           )}>
             {ultimaMensagem?.conteudo || (
-              <span className="flex items-center gap-1 text-conv-text-muted">
+              <span className="flex items-center gap-1 text-muted-foreground">
                 <MessageSquare className="h-3 w-3" />
                 Nova conversa
               </span>
@@ -116,7 +116,7 @@ export const ItemConversa = memo(({ conversa, selecionada, onClick, canal }: Ite
           </p>
 
           {temNaoLidas && (
-            <span className="flex items-center justify-center h-5 min-w-5 px-1.5 text-[10px] font-semibold bg-conv-accent text-white rounded-full shrink-0">
+            <span className="flex items-center justify-center h-5 min-w-5 px-1.5 text-[10px] font-semibold bg-primary text-white rounded-full shrink-0">
               {naoLidas > 99 ? '99+' : naoLidas}
             </span>
           )}

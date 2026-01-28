@@ -57,11 +57,6 @@ export const campanhasServico = {
     return response.data.dados;
   },
 
-  async retomar(id: string): Promise<Campanha> {
-    const response = await api.post<RespostaApi<Campanha>>(`/campanhas/${id}/retomar`);
-    return response.data.dados;
-  },
-
   async cancelar(id: string): Promise<Campanha> {
     const response = await api.post<RespostaApi<Campanha>>(`/campanhas/${id}/cancelar`);
     return response.data.dados;

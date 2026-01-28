@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoBaseSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Mensagens Agendadas
@@ -29,9 +30,7 @@ export const atualizarMensagemAgendadaBodySchema = z.object({
 });
 
 // Schema para listar mensagens agendadas
-export const listarMensagensAgendadasQuerySchema = z.object({
-  pagina: z.coerce.number().min(1).default(1),
-  limite: z.coerce.number().min(1).max(100).default(20),
+export const listarMensagensAgendadasQuerySchema = paginacaoBaseSchema.extend({
   status: statusMensagemAgendadaEnum.optional(),
   contatoId: z.string().uuid().optional(),
   dataInicio: z.string().datetime().optional(),

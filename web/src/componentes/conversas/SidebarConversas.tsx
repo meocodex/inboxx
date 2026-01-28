@@ -80,11 +80,11 @@ const BotaoNav = memo(({ icone: Icone, label, ativo, badge, onClick }: BotaoNavP
         size="icon"
         onClick={onClick}
         className={cn(
-          'relative h-[42px] w-[42px] rounded-conv-md',
-          'text-conv-text-muted hover:text-conv-text-primary',
-          'hover:bg-conv-bg-hover',
+          'relative h-[42px] w-[42px] rounded-md',
+          'text-muted-foreground hover:text-foreground',
+          'hover:bg-accent',
           'transition-colors',
-          ativo && 'bg-conv-accent/15 text-conv-accent hover:bg-conv-accent/20'
+          ativo && 'bg-primary/15 text-primary hover:bg-primary/20'
         )}
       >
         <Icone className="h-5 w-5" />
@@ -122,8 +122,8 @@ const BotaoCanal = memo(({ canal, label, ativo, badge, onClick }: BotaoCanalProp
         size="icon"
         onClick={onClick}
         className={cn(
-          'relative h-[42px] w-[42px] rounded-conv-md',
-          'hover:bg-conv-bg-hover',
+          'relative h-[42px] w-[42px] rounded-md',
+          'hover:bg-accent',
           'transition-all',
           ativo && 'ring-2',
           ativo && canal === 'WHATSAPP' && 'ring-whatsapp bg-whatsapp/15',
@@ -170,11 +170,11 @@ export const SidebarConversas = memo(({
     : 'U';
 
   return (
-    <aside className="flex flex-col h-full w-[70px] shrink-0 bg-conv-bg-secondary border-r border-conv-border">
+    <aside className="flex flex-col h-full w-[70px] shrink-0 bg-muted border-r border-border">
       {/* Logo */}
-      <div className="flex items-center justify-center h-16 border-b border-conv-border">
+      <div className="flex items-center justify-center h-16 border-b border-border">
         <div
-          className="flex items-center justify-center h-10 w-10 rounded-conv-md text-white font-bold text-lg"
+          className="flex items-center justify-center h-10 w-10 rounded-md text-white font-bold text-lg"
           style={{
             background: 'linear-gradient(135deg, #00d67d, #00a86b)',
             boxShadow: '0 4px 15px rgba(0, 214, 125, 0.3)',
@@ -201,12 +201,12 @@ export const SidebarConversas = memo(({
 
         {/* Separador */}
         <div className="px-5 my-4">
-          <Separator className="bg-conv-border" />
+          <Separator className="bg-border" />
         </div>
 
         {/* Label Canais */}
         <div className="px-3 mb-2">
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-conv-text-muted block text-center">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground block text-center">
             Canais
           </span>
         </div>
@@ -229,13 +229,13 @@ export const SidebarConversas = memo(({
       </div>
 
       {/* Navegacao Inferior */}
-      <div className="flex flex-col items-center gap-1 px-3 pb-4 border-t border-conv-border pt-4">
+      <div className="flex flex-col items-center gap-1 px-3 pb-4 border-t border-border pt-4">
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-[42px] w-[42px] rounded-conv-md text-conv-text-muted hover:text-conv-text-primary hover:bg-conv-bg-hover"
+              className="h-[42px] w-[42px] rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
             >
               <Zap className="h-5 w-5" />
             </Button>
@@ -250,7 +250,7 @@ export const SidebarConversas = memo(({
             <Button
               variant="ghost"
               size="icon"
-              className="h-[42px] w-[42px] rounded-conv-md text-conv-text-muted hover:text-conv-text-primary hover:bg-conv-bg-hover"
+              className="h-[42px] w-[42px] rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
             >
               <Bot className="h-5 w-5" />
             </Button>
@@ -265,7 +265,7 @@ export const SidebarConversas = memo(({
             <Button
               variant="ghost"
               size="icon"
-              className="h-[42px] w-[42px] rounded-conv-md text-conv-text-muted hover:text-conv-text-primary hover:bg-conv-bg-hover"
+              className="h-[42px] w-[42px] rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
             >
               <Users className="h-5 w-5" />
             </Button>
@@ -279,8 +279,8 @@ export const SidebarConversas = memo(({
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button className="mt-2">
-              <Avatar className="h-7 w-7 ring-2 ring-conv-border hover:ring-conv-accent transition-all">
-                <AvatarFallback className="bg-conv-bg-tertiary text-conv-text-primary text-xs">
+              <Avatar className="h-7 w-7 ring-2 ring-border hover:ring-primary transition-all">
+                <AvatarFallback className="bg-secondary text-foreground text-xs">
                   {iniciais}
                 </AvatarFallback>
               </Avatar>

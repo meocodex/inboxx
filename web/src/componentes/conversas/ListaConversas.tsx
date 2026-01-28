@@ -55,11 +55,11 @@ const BotaoFiltroRapido = memo(({ label, contador, ativo, onClick }: BotaoFiltro
   <button
     onClick={onClick}
     className={cn(
-      'flex items-center justify-between p-2 rounded-conv-md text-xs font-medium transition-colors',
-      'border border-conv-border',
+      'flex items-center justify-between p-2 rounded-md text-xs font-medium transition-colors',
+      'border border-border',
       ativo
-        ? 'bg-conv-accent/15 border-conv-accent text-conv-accent'
-        : 'bg-conv-bg-tertiary text-conv-text-secondary hover:bg-conv-bg-hover hover:text-conv-text-primary'
+        ? 'bg-primary/15 border-primary text-primary'
+        : 'bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground'
     )}
   >
     <span>{label}</span>
@@ -67,7 +67,7 @@ const BotaoFiltroRapido = memo(({ label, contador, ativo, onClick }: BotaoFiltro
       variant="secondary"
       className={cn(
         'h-5 px-1.5 text-[10px]',
-        ativo ? 'bg-conv-accent/20 text-conv-accent' : 'bg-conv-bg-hover text-conv-text-muted'
+        ativo ? 'bg-primary/20 text-primary' : 'bg-accent text-muted-foreground'
       )}
     >
       {contador}
@@ -116,16 +116,16 @@ export const ListaConversas = memo(({
   };
 
   return (
-    <div className="flex flex-col h-full bg-conv-bg-secondary">
+    <div className="flex flex-col h-full bg-muted">
       {/* Header */}
       <div className="p-4 space-y-3">
         {/* Titulo + Acoes */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-conv-text-primary">Conversas</h2>
+            <h2 className="text-lg font-bold text-foreground">Conversas</h2>
             <Badge
               variant="secondary"
-              className="bg-conv-accent/15 text-conv-accent text-[11px] font-semibold rounded-conv-full"
+              className="bg-primary/15 text-primary text-[11px] font-semibold rounded-full"
             >
               {conversas.length}
             </Badge>
@@ -135,7 +135,7 @@ export const ListaConversas = memo(({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-conv-md text-conv-text-muted hover:text-conv-text-primary hover:bg-conv-bg-hover"
+              className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
             >
               <RotateCw className="h-4 w-4" />
             </Button>
@@ -145,10 +145,10 @@ export const ListaConversas = memo(({
               size="icon"
               onClick={() => setFiltrosAvancadosAbertos(!filtrosAvancadosAbertos)}
               className={cn(
-                'h-8 w-8 rounded-conv-md',
+                'h-8 w-8 rounded-md',
                 filtrosAvancadosAbertos
-                  ? 'bg-conv-accent/15 text-conv-accent'
-                  : 'text-conv-text-muted hover:text-conv-text-primary hover:bg-conv-bg-hover'
+                  ? 'bg-primary/15 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
               )}
             >
               <SlidersHorizontal className="h-4 w-4" />
@@ -159,7 +159,7 @@ export const ListaConversas = memo(({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-conv-md text-conv-text-muted hover:text-conv-text-primary hover:bg-conv-bg-hover"
+                  className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
@@ -174,16 +174,16 @@ export const ListaConversas = memo(({
 
         {/* Busca */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-conv-text-muted" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar conversas..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             className={cn(
-              'pl-9 h-10 rounded-conv-md',
-              'bg-conv-bg-tertiary border-conv-border',
-              'text-conv-text-primary placeholder:text-conv-text-muted',
-              'focus:ring-conv-accent focus:border-conv-accent'
+              'pl-9 h-10 rounded-md',
+              'bg-secondary border-border',
+              'text-foreground placeholder:text-muted-foreground',
+              'focus:ring-primary focus:border-primary'
             )}
           />
         </div>
@@ -218,10 +218,10 @@ export const ListaConversas = memo(({
 
         {/* Filtros Avancados (Expansivel) */}
         {filtrosAvancadosAbertos && (
-          <div className="space-y-2 pt-2 border-t border-conv-border">
+          <div className="space-y-2 pt-2 border-t border-border">
             <div className="grid grid-cols-2 gap-2">
               <Select>
-                <SelectTrigger className="h-9 text-xs bg-conv-bg-tertiary border-conv-border rounded-conv-md">
+                <SelectTrigger className="h-9 text-xs bg-secondary border-border rounded-md">
                   <SelectValue placeholder="Canal" />
                 </SelectTrigger>
                 <SelectContent>
@@ -232,7 +232,7 @@ export const ListaConversas = memo(({
               </Select>
 
               <Select>
-                <SelectTrigger className="h-9 text-xs bg-conv-bg-tertiary border-conv-border rounded-conv-md">
+                <SelectTrigger className="h-9 text-xs bg-secondary border-border rounded-md">
                   <SelectValue placeholder="Agente" />
                 </SelectTrigger>
                 <SelectContent>
@@ -242,7 +242,7 @@ export const ListaConversas = memo(({
               </Select>
 
               <Select>
-                <SelectTrigger className="h-9 text-xs bg-conv-bg-tertiary border-conv-border rounded-conv-md">
+                <SelectTrigger className="h-9 text-xs bg-secondary border-border rounded-md">
                   <SelectValue placeholder="Periodo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -253,7 +253,7 @@ export const ListaConversas = memo(({
               </Select>
 
               <Select>
-                <SelectTrigger className="h-9 text-xs bg-conv-bg-tertiary border-conv-border rounded-conv-md">
+                <SelectTrigger className="h-9 text-xs bg-secondary border-border rounded-md">
                   <SelectValue placeholder="Etiqueta" />
                 </SelectTrigger>
                 <SelectContent>
@@ -266,7 +266,7 @@ export const ListaConversas = memo(({
         )}
       </div>
 
-      <Separator className="bg-conv-border" />
+      <Separator className="bg-border" />
 
       {/* Lista */}
       <ScrollArea className="flex-1">
@@ -276,12 +276,12 @@ export const ListaConversas = memo(({
           </div>
         ) : conversasFiltradas.length === 0 ? (
           <Vazio
-            icone={<MessageSquare className="h-12 w-12 text-conv-text-muted" />}
+            icone={<MessageSquare className="h-12 w-12 text-muted-foreground" />}
             titulo="Nenhuma conversa"
             descricao={busca ? 'Tente outra busca' : 'As conversas aparecerao aqui'}
           />
         ) : (
-          <div className="divide-y divide-conv-border">
+          <div className="divide-y divide-border">
             {conversasFiltradas.map((conversa) => (
               <ItemConversa
                 key={conversa.id}

@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { cartoesServico } from './cartoes.servico.js';
-import { ErroSemPermissao } from '../../compartilhado/erros/index.js';
+import { extrairClienteId } from '../../compartilhado/utilitarios/cliente-contexto.js';
 import {
   criarCartaoBodySchema,
   atualizarCartaoBodySchema,
@@ -36,11 +36,7 @@ export async function cartoesRotas(app: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const query = listarCartoesQuerySchema.parse(request.query);
       const resultado = await cartoesServico.listar(
@@ -69,11 +65,7 @@ export async function cartoesRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { quadroId: string; colunaId: string; id: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const cartao = await cartoesServico.obterPorId(
         clienteId,
@@ -104,11 +96,7 @@ export async function cartoesRotas(app: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = criarCartaoBodySchema.parse(request.body);
       const cartao = await cartoesServico.criar(
@@ -144,11 +132,7 @@ export async function cartoesRotas(app: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = atualizarCartaoBodySchema.parse(request.body);
       const cartao = await cartoesServico.atualizar(
@@ -185,11 +169,7 @@ export async function cartoesRotas(app: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       const dados = moverCartaoBodySchema.parse(request.body);
       const cartao = await cartoesServico.mover(
@@ -220,11 +200,7 @@ export async function cartoesRotas(app: FastifyInstance) {
       request: FastifyRequest<{ Params: { quadroId: string; colunaId: string; id: string } }>,
       reply: FastifyReply
     ) => {
-      const clienteId = request.usuario.clienteId;
-
-      if (!clienteId) {
-        throw new ErroSemPermissao('Acesso negado: contexto de cliente necessario');
-      }
+      const clienteId = extrairClienteId(request);
 
       await cartoesServico.excluir(
         clienteId,

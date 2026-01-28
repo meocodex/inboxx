@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginacaoComOrdenacaoSchema } from '../../compartilhado/schemas/paginacao.schema.js';
 
 // =============================================================================
 // Schemas de Request
@@ -21,14 +22,11 @@ export const atualizarClienteBodySchema = z.object({
   ativo: z.boolean().optional(),
 });
 
-export const listarClientesQuerySchema = z.object({
-  pagina: z.coerce.number().min(1).default(1),
-  limite: z.coerce.number().min(1).max(100).default(20),
-  busca: z.string().optional(),
+export const listarClientesQuerySchema = paginacaoComOrdenacaoSchema.extend({
+  ordem: z.enum(['asc', 'desc']).default('desc'),
   ativo: z.enum(['true', 'false', 'todos']).default('todos'),
   planoId: z.string().uuid().optional(),
   ordenarPor: z.enum(['nome', 'email', 'criadoEm']).default('criadoEm'),
-  ordem: z.enum(['asc', 'desc']).default('desc'),
 });
 
 // =============================================================================
