@@ -15,6 +15,14 @@ const ambienteSchema = z.object({
       (url) => url.startsWith('postgresql://') || url.startsWith('postgres://'),
       'DATABASE_URL deve comecar com postgresql:// ou postgres://',
     ),
+  PGBOUNCER_URL: z
+    .string()
+    .url('PGBOUNCER_URL deve ser uma URL valida')
+    .refine(
+      (url) => url.startsWith('postgresql://') || url.startsWith('postgres://'),
+      'PGBOUNCER_URL deve comecar com postgresql:// ou postgres://',
+    )
+    .optional(),
 
   // Redis
   REDIS_URL: z
@@ -49,8 +57,8 @@ const ambienteSchema = z.object({
   S3_FORCE_PATH_STYLE: z.coerce.boolean().default(true), // true para MinIO
 
   // Meta Cloud API (WhatsApp Business)
-  META_WEBHOOK_VERIFY_TOKEN: z.string().default('crm_webhook_verify_token'),
-  META_APP_SECRET: z.string().default(''),
+  META_WEBHOOK_VERIFY_TOKEN: z.string().min(16, 'META_WEBHOOK_VERIFY_TOKEN deve ter no minimo 16 caracteres'),
+  META_APP_SECRET: z.string().min(1, 'META_APP_SECRET é obrigatório'),
   META_ACCESS_TOKEN: z.string().optional(),
   META_PHONE_NUMBER_ID: z.string().optional(),
   META_BUSINESS_ACCOUNT_ID: z.string().optional(),
@@ -58,6 +66,9 @@ const ambienteSchema = z.object({
   // UaiZap (provedor alternativo)
   UAIZAP_API_URL: z.string().url().optional(),
   UAIZAP_API_KEY: z.string().optional(),
+
+  // Webhooks
+  WEBHOOK_WHITELIST_IPS: z.string().optional(), // ex: "192.168.1.1,10.0.0.1"
 
   // Meilisearch (busca - opcional)
   MEILI_URL: z.string().url().optional(),
@@ -96,6 +107,42 @@ if (!resultado.success) {
   console.error('='.repeat(60));
 
   process.exit(1);
+}
+
+// Validar valores inseguros em produção
+if (resultado.data.NODE_ENV === 'production') {
+  const valoresInseguros = [
+    'GERE_UMA_CHAVE',
+    'DEFINA_TOKEN',
+    'COPIE_DO_PAINEL',
+    'COPIE_DA_PLATAFORMA',
+    'crm_webhook',
+    'sua-chave-secreta',
+    'sua_senha',
+    'exemplo',
+    'test',
+    'demo',
+  ];
+
+  const camposCriticos = [
+    'JWT_SECRET',
+    'COOKIE_SECRET',
+    'META_APP_SECRET',
+    'META_WEBHOOK_VERIFY_TOKEN',
+  ];
+
+  for (const campo of camposCriticos) {
+    const valor = resultado.data[campo as keyof typeof resultado.data] as string;
+    if (!valor || valoresInseguros.some(v => valor.includes(v))) {
+      console.error('');
+      console.error('🚨 ERRO DE SEGURANÇA: Valor inseguro detectado em produção!');
+      console.error(`Variável: ${campo}`);
+      console.error('Valores de exemplo NÃO podem ser usados em produção.');
+      console.error('Execute: ./scripts/gerar-secrets.sh para gerar valores seguros');
+      console.error('');
+      process.exit(1);
+    }
+  }
 }
 
 export const env = resultado.data;

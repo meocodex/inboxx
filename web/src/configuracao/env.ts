@@ -22,7 +22,7 @@ function obterEnv(chave: keyof RuntimeEnv): string {
 
 /**
  * URL base da API.
- * - Em producao: definida via VITE_API_URL no EasyPanel (ex: https://2026-crmapi.crylab.easypanel.host/api)
+ * - Em producao: deixar vazio ou usar "/api" (mesmo dominio do frontend)
  * - Em desenvolvimento: fallback para /api (relativo, funciona na porta 5000)
  */
 export const API_URL = obterEnv('VITE_API_URL') || '/api';

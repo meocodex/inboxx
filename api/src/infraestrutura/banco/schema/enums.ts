@@ -97,3 +97,14 @@ export const statusMensagemAgendadaEnum = pgEnum('StatusMensagemAgendada', [
   'CANCELADA',
   'ERRO',
 ]);
+
+// Execucoes Chatbot
+export const statusExecucaoChatbotEnum = pgEnum('StatusExecucaoChatbot', [
+  'ATIVA',
+  'AGUARDANDO',
+  'PAUSADA',
+  'FINALIZADA',
+  'TRANSFERIDA',
+  'TIMEOUT',
+  'ERRO',
+]);

@@ -124,6 +124,7 @@ export const fluxosServico = {
 
     // Criar no inicial automaticamente
     await db.insert(nosChatbot).values({
+      clienteId,
       fluxoId: fluxo.id,
       tipo: 'INICIO',
       nome: 'Início',
@@ -197,6 +198,7 @@ export const fluxosServico = {
     // Criar copias dos nos
     for (const no of fluxoOriginal.nos) {
       const [novoNo] = await db.insert(nosChatbot).values({
+        clienteId,
         fluxoId: novoFluxo.id,
         tipo: no.tipo,
         nome: no.nome,

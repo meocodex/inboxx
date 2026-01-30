@@ -3,8 +3,10 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { verificarToken, type JwtPayload } from '../utilitarios/criptografia.js';
 import { ErroNaoAutorizado } from '../erros/index.js';
 import { eq } from 'drizzle-orm';
-import { db } from '../../infraestrutura/banco/drizzle.servico.js';
+import { db, setClienteContext } from '../../infraestrutura/banco/drizzle.servico.js';
 import { perfis, clientes } from '../../infraestrutura/banco/schema/index.js';
+import { cachePerfis } from '../../infraestrutura/cache/redis.servico.js';
+import { logger } from '../utilitarios/logger.js';
 
 // =============================================================================
 // Tipos
@@ -55,23 +57,46 @@ export async function autenticacaoMiddleware(
   try {
     const payload = await verificarToken(token);
 
-    // Buscar permissoes do perfil
-    const resultado = await db
-      .select({ permissoes: perfis.permissoes })
-      .from(perfis)
-      .where(eq(perfis.id, payload.perfilId))
-      .limit(1);
+    // ==========================================================================
+    // CACHE: Buscar permissões do cache Redis (TTL 3600s - 1h)
+    // Executado em TODA requisição - cache crítico para performance
+    // ==========================================================================
+    const chaveCache = `permissoes:${payload.perfilId}`;
+    let permissoes = await cachePerfis.get<string[]>(chaveCache);
 
-    const perfil = resultado[0];
+    if (permissoes) {
+      logger.debug({ perfilId: payload.perfilId }, 'Permissões: Cache HIT');
+    } else {
+      logger.debug({ perfilId: payload.perfilId }, 'Permissões: Cache MISS - consultando DB');
 
-    if (!perfil) {
-      throw new ErroNaoAutorizado('Perfil nao encontrado');
+      // Buscar permissões do perfil no banco
+      const resultado = await db
+        .select({ permissoes: perfis.permissoes })
+        .from(perfis)
+        .where(eq(perfis.id, payload.perfilId))
+        .limit(1);
+
+      const perfil = resultado[0];
+
+      if (!perfil || !perfil.permissoes) {
+        throw new ErroNaoAutorizado('Perfil nao encontrado');
+      }
+
+      permissoes = perfil.permissoes;
+
+      // Cachear permissões (TTL 1h - invalidado ao atualizar perfil)
+      await cachePerfis.set(chaveCache, permissoes, 3600);
+    }
+
+    // Garantir que permissoes nunca seja null (TypeScript)
+    if (!permissoes) {
+      throw new ErroNaoAutorizado('Permissoes nao encontradas');
     }
 
     // Resolver clienteId para SUPER_ADMIN (clienteId nulo no token)
     let clienteId = payload.clienteId;
 
-    if (!clienteId && perfil.permissoes.includes('*')) {
+    if (!clienteId && permissoes.includes('*')) {
       // SUPER_ADMIN: aceitar header X-Cliente-Id ou auto-selecionar primeiro cliente ativo
       const headerClienteId = request.headers['x-cliente-id'] as string | undefined;
       if (headerClienteId) {
@@ -88,12 +113,17 @@ export async function autenticacaoMiddleware(
       }
     }
 
+    // ==========================================================================
+    // RLS: Definir contexto do cliente para Row-Level Security
+    // ==========================================================================
+    await setClienteContext(clienteId);
+
     // Injetar usuario no request
     request.usuario = {
       id: payload.sub,
       clienteId,
       perfilId: payload.perfilId,
-      permissoes: perfil.permissoes,
+      permissoes,
     };
   } catch (erro) {
     if (erro instanceof ErroNaoAutorizado) {

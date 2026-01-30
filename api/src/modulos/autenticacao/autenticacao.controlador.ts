@@ -104,7 +104,7 @@ export async function autenticacaoRotas(app: FastifyInstance) {
 
       return reply.status(200).send({
         sucesso: true,
-        dados: { usuario },
+        dados: usuario,
       });
     }
   );

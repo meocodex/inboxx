@@ -16,6 +16,18 @@ export type TipoNo =
 export type StatusFluxo = 'RASCUNHO' | 'ATIVO' | 'INATIVO';
 
 // =============================================================================
+// Gatilho (JSONB no backend)
+// =============================================================================
+
+export type TipoGatilho = 'PALAVRA_CHAVE' | 'PRIMEIRA_MENSAGEM' | 'HORARIO' | 'ETIQUETA';
+
+export interface Gatilho {
+  tipo: TipoGatilho;
+  valor?: string;
+  configuracao?: Record<string, unknown>;
+}
+
+// =============================================================================
 // Entidades
 // =============================================================================
 
@@ -42,7 +54,7 @@ export interface Fluxo {
   nome: string;
   descricao?: string;
   status: StatusFluxo;
-  gatilho: string;
+  gatilho: Gatilho;
   nos: NoFluxo[];
   clienteId: string;
   criadoEm: string;
@@ -54,7 +66,7 @@ export interface FluxoResumo {
   nome: string;
   descricao?: string;
   status: StatusFluxo;
-  gatilho: string;
+  gatilho: Gatilho;
   totalNos: number;
   criadoEm: string;
 }
@@ -66,13 +78,13 @@ export interface FluxoResumo {
 export interface CriarFluxoDTO {
   nome: string;
   descricao?: string;
-  gatilho: string;
+  gatilho: Gatilho;
 }
 
 export interface AtualizarFluxoDTO {
   nome?: string;
   descricao?: string;
-  gatilho?: string;
+  gatilho?: Gatilho;
   status?: StatusFluxo;
 }
 

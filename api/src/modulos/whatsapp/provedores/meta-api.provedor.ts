@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
 
 import { logger } from '../../../compartilhado/utilitarios/logger.js';
+import { agendarEnvioWhatsApp } from '../../../infraestrutura/rate-limiting/whatsapp-limiter.js';
 import type { IProvedorWhatsApp, EnviarMensagemOpcoes } from './provedor.interface.js';
 import type {
   ConteudoMensagem,
@@ -54,35 +55,38 @@ export class MetaApiProvedor implements IProvedorWhatsApp {
     conteudo: ConteudoMensagem,
     opcoes?: EnviarMensagemOpcoes
   ): Promise<ResultadoEnvio> {
-    try {
-      const payload = this.construirPayload(telefone, conteudo, opcoes);
+    // CRÍTICO: Rate limiting WhatsApp (80 msg/s)
+    return agendarEnvioWhatsApp(async () => {
+      try {
+        const payload = this.construirPayload(telefone, conteudo, opcoes);
 
-      const response = await this.api.post(
-        `/${this.config.phoneNumberId}/messages`,
-        payload
-      );
+        const response = await this.api.post(
+          `/${this.config.phoneNumberId}/messages`,
+          payload
+        );
 
-      const mensagemId = response.data.messages?.[0]?.id;
+        const mensagemId = response.data.messages?.[0]?.id;
 
-      logger.debug({ telefone, mensagemId }, 'Meta: Mensagem enviada');
+        logger.debug({ telefone, mensagemId }, 'Meta: Mensagem enviada');
 
-      return {
-        sucesso: true,
-        mensagemId,
-        provedor: 'META_API',
-        timestamp: new Date(),
-      };
-    } catch (erro) {
-      const mensagemErro = this.extrairErro(erro);
-      logger.error({ erro: mensagemErro, telefone }, 'Meta: Erro ao enviar mensagem');
+        return {
+          sucesso: true,
+          mensagemId,
+          provedor: 'META_API',
+          timestamp: new Date(),
+        };
+      } catch (erro) {
+        const mensagemErro = this.extrairErro(erro);
+        logger.error({ erro: mensagemErro, telefone }, 'Meta: Erro ao enviar mensagem');
 
-      return {
-        sucesso: false,
-        erro: mensagemErro,
-        provedor: 'META_API',
-        timestamp: new Date(),
-      };
-    }
+        return {
+          sucesso: false,
+          erro: mensagemErro,
+          provedor: 'META_API',
+          timestamp: new Date(),
+        };
+      }
+    }, `msg:${telefone}:${Date.now()}`);
   }
 
   // ===========================================================================

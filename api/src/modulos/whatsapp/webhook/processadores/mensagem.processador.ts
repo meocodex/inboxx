@@ -134,19 +134,34 @@ async function processarMensagemMetaIndividual(
   // Extrair conteudo da mensagem
   const { tipo, conteudo, midiaUrl } = extrairConteudoMeta(mensagemMeta);
 
-  // Criar mensagem no banco
-  const [mensagem] = await db
-    .insert(mensagens)
-    .values({
-      conversaId: conversa.id,
-      tipo,
-      conteudo,
-      midiaUrl,
-      direcao: 'ENTRADA',
-      status: 'ENTREGUE',
-      idExterno: mensagemMeta.id,
-    })
-    .returning();
+  // Criar mensagem no banco (com proteção contra duplicatas)
+  let mensagem;
+  try {
+    [mensagem] = await db
+      .insert(mensagens)
+      .values({
+        clienteId,
+        conversaId: conversa.id,
+        tipo,
+        conteudo,
+        midiaUrl,
+        direcao: 'ENTRADA',
+        status: 'ENTREGUE',
+        idExterno: mensagemMeta.id,
+      })
+      .returning();
+  } catch (erro: any) {
+    // Capturar erro de UNIQUE constraint (webhook duplicado)
+    if (erro.code === '23505' && erro.constraint === 'unique_mensagem_id_externo') {
+      logger.debug(
+        { idExterno: mensagemMeta.id, clienteId },
+        'Webhook duplicado ignorado (idempotência)'
+      );
+      return; // Ignorar silenciosamente
+    }
+    // Outros erros devem ser propagados
+    throw erro;
+  }
 
   // Atualizar conversa
   await db
@@ -347,19 +362,34 @@ export async function processarMensagemUaiZap(
   // Extrair conteudo
   const { tipo, conteudo, midiaUrl } = extrairConteudoUaiZap(mensagem);
 
-  // Criar mensagem
-  const [mensagemDB] = await db
-    .insert(mensagens)
-    .values({
-      conversaId: conversa.id,
-      tipo,
-      conteudo,
-      midiaUrl,
-      direcao: 'ENTRADA',
-      status: 'ENTREGUE',
-      idExterno: mensagem.id,
-    })
-    .returning();
+  // Criar mensagem (com proteção contra duplicatas)
+  let mensagemDB;
+  try {
+    [mensagemDB] = await db
+      .insert(mensagens)
+      .values({
+        clienteId,
+        conversaId: conversa.id,
+        tipo,
+        conteudo,
+        midiaUrl,
+        direcao: 'ENTRADA',
+        status: 'ENTREGUE',
+        idExterno: mensagem.id,
+      })
+      .returning();
+  } catch (erro: any) {
+    // Capturar erro de UNIQUE constraint (webhook duplicado)
+    if (erro.code === '23505' && erro.constraint === 'unique_mensagem_id_externo') {
+      logger.debug(
+        { idExterno: mensagem.id, clienteId },
+        'Webhook UaiZap duplicado ignorado (idempotência)'
+      );
+      return; // Ignorar silenciosamente
+    }
+    // Outros erros devem ser propagados
+    throw erro;
+  }
 
   // Atualizar conversa
   await db

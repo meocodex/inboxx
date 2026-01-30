@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 // =============================================================================
 // Tipos
@@ -49,7 +49,7 @@ export function useToast() {
   const [state, setState] = useState<ToastState>(memoryState);
 
   // Registrar listener
-  useState(() => {
+  useEffect(() => {
     listeners.push(setState);
     return () => {
       const index = listeners.indexOf(setState);
@@ -57,7 +57,7 @@ export function useToast() {
         listeners.splice(index, 1);
       }
     };
-  });
+  }, []);
 
   const toast = useCallback(
     (props: Omit<Toast, 'id'>) => {

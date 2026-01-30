@@ -139,6 +139,7 @@ export const mensagensServico = {
     const [mensagemCriada] = await db
       .insert(mensagens)
       .values({
+        clienteId,
         conversaId: dados.conversaId,
         direcao: 'SAIDA',
         tipo: dados.tipo,
@@ -322,6 +323,7 @@ export const mensagensServico = {
     const [mensagem] = await db
       .insert(mensagens)
       .values({
+        clienteId,
         conversaId: conversa.id,
         direcao: 'ENTRADA',
         tipo: dados.tipo,

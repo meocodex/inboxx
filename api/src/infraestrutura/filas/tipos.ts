@@ -8,7 +8,8 @@ export type NomeJob =
   | 'mensagem-agendada.enviar'
   | 'lembrete.enviar'
   | 'webhook.retry'
-  | 'busca.sincronizar';
+  | 'busca.sincronizar'
+  | 'dlq.processar';
 
 // =============================================================================
 // Payloads dos Jobs
@@ -64,6 +65,14 @@ export interface JobBuscaSincronizar {
   documentoId?: string;
 }
 
+export interface JobDlqProcessar {
+  origem: string;
+  jobOriginal: Record<string, unknown>;
+  erro?: string;
+  tentativasOriginais?: number;
+  timestampFalha: string;
+}
+
 // =============================================================================
 // Mapeamento de Jobs para Payloads
 // =============================================================================
@@ -75,6 +84,7 @@ export interface JobPayloads {
   'lembrete.enviar': JobLembrete;
   'webhook.retry': JobWebhookRetry;
   'busca.sincronizar': JobBuscaSincronizar;
+  'dlq.processar': JobDlqProcessar;
 }
 
 // =============================================================================

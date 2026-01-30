@@ -7,22 +7,42 @@ import {
   Clock,
   TrendingUp,
   BarChart3,
+  FileBarChart,
+  Mail,
+  CheckCircle,
+  Eye,
+  AlertCircle,
 } from 'lucide-react';
-import { relatoriosServico } from '@/servicos/relatorios.servico';
-import { formatarNumero } from '@/utilitarios/formatadores';
-import { Button } from '@/componentes/ui/button';
+import {
+  relatoriosServico,
+  calcularPeriodo,
+  type RelatorioConversasProcessado,
+  type RelatorioKanbanProcessado,
+  type RelatorioCampanhasProcessado,
+} from '@/servicos/relatorios.servico';
+import { formatarNumero, formatarMoeda } from '@/utilitarios/formatadores';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
-import { Carregando } from '@/componentes/comum/Carregando';
-import { ErroMensagem, Vazio } from '@/componentes/comum/ErroMensagem';
+import {
+  SidebarSecundaria,
+  CabecalhoSidebar,
+  SecaoSidebar,
+  ItemSidebar,
+  SeparadorSidebar,
+  CabecalhoPagina,
+  EstadoVazio,
+  EstadoCarregando,
+  EstadoErro,
+} from '@/componentes/layout';
 
 // =============================================================================
 // Tipos
 // =============================================================================
 
 type TipoRelatorio = 'conversas' | 'kanban' | 'campanhas';
+type FiltroPeriodo = '7d' | '30d' | '90d' | '365d';
 
 // =============================================================================
-// Componente Card Métrica
+// Componente Card Metrica
 // =============================================================================
 
 interface CardMetricaProps {
@@ -55,6 +75,10 @@ function CardMetrica({ titulo, valor, descricao, icone }: CardMetricaProps) {
 
 export default function Relatorios() {
   const [tipoRelatorio, setTipoRelatorio] = useState<TipoRelatorio>('conversas');
+  const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>('30d');
+
+  // Calcular datas baseado no periodo selecionado
+  const filtrosDatas = calcularPeriodo(filtroPeriodo);
 
   // ---------------------------------------------------------------------------
   // Queries
@@ -63,9 +87,10 @@ export default function Relatorios() {
     data: conversas,
     isLoading: carregandoConversas,
     error: erroConversas,
+    refetch: recarregarConversas,
   } = useQuery({
-    queryKey: ['relatorios', 'conversas'],
-    queryFn: () => relatoriosServico.conversas(),
+    queryKey: ['relatorios', 'conversas', filtroPeriodo],
+    queryFn: () => relatoriosServico.conversas(filtrosDatas),
     enabled: tipoRelatorio === 'conversas',
   });
 
@@ -73,6 +98,7 @@ export default function Relatorios() {
     data: kanban,
     isLoading: carregandoKanban,
     error: erroKanban,
+    refetch: recarregarKanban,
   } = useQuery({
     queryKey: ['relatorios', 'kanban'],
     queryFn: () => relatoriosServico.kanban(),
@@ -83,140 +109,265 @@ export default function Relatorios() {
     data: campanhas,
     isLoading: carregandoCampanhas,
     error: erroCampanhas,
+    refetch: recarregarCampanhas,
   } = useQuery({
-    queryKey: ['relatorios', 'campanhas'],
-    queryFn: () => relatoriosServico.campanhas(),
+    queryKey: ['relatorios', 'campanhas', filtroPeriodo],
+    queryFn: () => relatoriosServico.campanhas(filtrosDatas),
     enabled: tipoRelatorio === 'campanhas',
   });
 
   // ---------------------------------------------------------------------------
-  // Render Content
+  // Render Conversas
   // ---------------------------------------------------------------------------
-  const renderConteudo = () => {
-    if (tipoRelatorio === 'conversas') {
-      if (carregandoConversas) return <Carregando tamanho="lg" texto="Carregando..." />;
-      if (erroConversas) return <ErroMensagem titulo="Erro" mensagem="Falha ao carregar" />;
-      if (!conversas || conversas.length === 0) {
-        return <Vazio icone={<BarChart3 className="h-12 w-12" />} titulo="Sem dados" descricao="Nenhum dado disponivel" />;
-      }
+  const renderConversas = (dados: RelatorioConversasProcessado) => {
+    const { resumo } = dados;
 
-      const totais = conversas.reduce(
-        (acc, c) => ({
-          total: acc.total + c.total,
-          abertas: acc.abertas + c.abertas,
-          encerradas: acc.encerradas + c.encerradas,
-        }),
-        { total: 0, abertas: 0, encerradas: 0 }
-      );
+    return (
+      <>
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <CardMetrica
+            titulo="Total de Conversas"
+            valor={formatarNumero(resumo.total)}
+            icone={<MessageSquare className="h-5 w-5" />}
+          />
+          <CardMetrica
+            titulo="Abertas"
+            valor={formatarNumero(resumo.abertas)}
+            icone={<TrendingUp className="h-5 w-5" />}
+          />
+          <CardMetrica
+            titulo="Em Atendimento"
+            valor={formatarNumero(resumo.emAtendimento)}
+            icone={<Clock className="h-5 w-5" />}
+          />
+          <CardMetrica
+            titulo="Resolvidas"
+            valor={formatarNumero(resumo.resolvidas)}
+            icone={<CheckCircle className="h-5 w-5" />}
+          />
+          <CardMetrica
+            titulo="Aguardando"
+            valor={formatarNumero(resumo.aguardando)}
+            icone={<Clock className="h-5 w-5" />}
+          />
+          <CardMetrica
+            titulo="Mensagens"
+            valor={formatarNumero(resumo.totalMensagens)}
+            icone={<Mail className="h-5 w-5" />}
+          />
+        </div>
 
-      return (
-        <>
-          <div className="grid gap-4 md:grid-cols-3">
-            <CardMetrica
-              titulo="Total de Conversas"
-              valor={formatarNumero(totais.total)}
-              icone={<MessageSquare className="h-5 w-5" />}
-            />
-            <CardMetrica
-              titulo="Conversas Abertas"
-              valor={formatarNumero(totais.abertas)}
-              icone={<TrendingUp className="h-5 w-5" />}
-            />
-            <CardMetrica
-              titulo="Conversas Encerradas"
-              valor={formatarNumero(totais.encerradas)}
-              icone={<Clock className="h-5 w-5" />}
-            />
-          </div>
-
+        {dados.porConexao.length > 0 && (
           <Card className="mt-6">
             <CardHeader>
-              <CardTitle>Conversas por Periodo</CardTitle>
+              <CardTitle>Conversas por Conexao</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {conversas.map((item, index) => (
+                {dados.porConexao.map((item, index) => (
                   <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <span className="font-medium">{item.periodo}</span>
-                    <div className="flex gap-6 text-sm">
-                      <span>Total: {item.total}</span>
-                      <span className="text-green-600">Abertas: {item.abertas}</span>
-                      <span className="text-muted-foreground">Encerradas: {item.encerradas}</span>
+                    <span className="font-medium">Conexao {item.conexaoId.slice(0, 8)}...</span>
+                    <span className="text-muted-foreground">{item._count.id} conversas</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render Kanban
+  // ---------------------------------------------------------------------------
+  const renderKanban = (dados: RelatorioKanbanProcessado) => {
+    const { resumo, porQuadro, valorPorColuna } = dados;
+
+    return (
+      <>
+        <div className="grid gap-4 md:grid-cols-3">
+          <CardMetrica
+            titulo="Total de Quadros"
+            valor={formatarNumero(resumo.totalQuadros)}
+            icone={<BarChart3 className="h-5 w-5" />}
+          />
+          <CardMetrica
+            titulo="Total de Cartoes"
+            valor={formatarNumero(resumo.totalCartoes)}
+            icone={<Users className="h-5 w-5" />}
+          />
+          <CardMetrica
+            titulo="Valor Total"
+            valor={formatarMoeda(resumo.valorTotal)}
+            icone={<TrendingUp className="h-5 w-5" />}
+          />
+        </div>
+
+        {porQuadro.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Quadros e Colunas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {porQuadro.map((quadro) => (
+                  <div key={quadro.id} className="border-b last:border-0 pb-4">
+                    <h4 className="font-semibold mb-3">{quadro.nome}</h4>
+                    <div className="grid gap-2 md:grid-cols-4">
+                      {quadro.colunas.map((coluna) => (
+                        <div key={coluna.id} className="bg-muted p-3 rounded-lg">
+                          <p className="text-sm font-medium">{coluna.nome}</p>
+                          <p className="text-lg font-bold">{coluna.totalCartoes}</p>
+                          <p className="text-xs text-muted-foreground">cartoes</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
-        </>
-      );
+        )}
+
+        {Object.keys(valorPorColuna).length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Valor por Coluna</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Object.entries(valorPorColuna).map(([coluna, data]) => (
+                  <div key={coluna} className="flex items-center justify-between py-2 border-b last:border-0">
+                    <span className="font-medium">{coluna}</span>
+                    <div className="text-right">
+                      <p className="font-semibold">{formatarMoeda(data.valor)}</p>
+                      <p className="text-xs text-muted-foreground">{data.total} cartoes</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render Campanhas
+  // ---------------------------------------------------------------------------
+  const renderCampanhas = (dados: RelatorioCampanhasProcessado) => {
+    const { resumo, envios, topCampanhas } = dados;
+
+    return (
+      <>
+        <div className="grid gap-4 md:grid-cols-4">
+          <CardMetrica
+            titulo="Total de Campanhas"
+            valor={formatarNumero(resumo.total)}
+            icone={<Megaphone className="h-5 w-5" />}
+          />
+          <CardMetrica
+            titulo="Concluidas"
+            valor={formatarNumero(resumo.concluidas)}
+            icone={<CheckCircle className="h-5 w-5" />}
+          />
+          <CardMetrica
+            titulo="Em Andamento"
+            valor={formatarNumero(resumo.emAndamento)}
+            icone={<Clock className="h-5 w-5" />}
+          />
+          <CardMetrica
+            titulo="Agendadas"
+            valor={formatarNumero(resumo.agendadas)}
+            icone={<Clock className="h-5 w-5" />}
+          />
+        </div>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Estatisticas de Envio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <Mail className="h-6 w-6 mx-auto mb-2 text-blue-500" />
+                <p className="text-2xl font-bold">{formatarNumero(envios.enviados)}</p>
+                <p className="text-sm text-muted-foreground">Enviados</p>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <CheckCircle className="h-6 w-6 mx-auto mb-2 text-green-500" />
+                <p className="text-2xl font-bold">{formatarNumero(envios.entregues)}</p>
+                <p className="text-sm text-muted-foreground">Entregues ({envios.taxaEntrega}%)</p>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <Eye className="h-6 w-6 mx-auto mb-2 text-purple-500" />
+                <p className="text-2xl font-bold">{formatarNumero(envios.lidos)}</p>
+                <p className="text-sm text-muted-foreground">Lidos ({envios.taxaLeitura}%)</p>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <AlertCircle className="h-6 w-6 mx-auto mb-2 text-red-500" />
+                <p className="text-2xl font-bold">{formatarNumero(envios.erros)}</p>
+                <p className="text-sm text-muted-foreground">Erros</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {topCampanhas.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Top Campanhas (por envios)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {topCampanhas.map((campanha, index) => (
+                  <div key={campanha.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg font-bold text-muted-foreground">#{index + 1}</span>
+                      <span className="font-medium">{campanha.nome}</span>
+                    </div>
+                    <span className="text-muted-foreground">{campanha._count.logs} envios</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render Content
+  // ---------------------------------------------------------------------------
+  const renderConteudo = () => {
+    if (tipoRelatorio === 'conversas') {
+      if (carregandoConversas) return <EstadoCarregando texto="Carregando relatorio..." />;
+      if (erroConversas) return <EstadoErro titulo="Erro" mensagem="Falha ao carregar relatorio de conversas" onTentarNovamente={() => recarregarConversas()} />;
+      if (!conversas) {
+        return <EstadoVazio icone={<BarChart3 className="h-16 w-16" />} titulo="Sem dados" descricao="Nenhum dado disponivel para o periodo selecionado" />;
+      }
+      return renderConversas(conversas);
     }
 
     if (tipoRelatorio === 'kanban') {
-      if (carregandoKanban) return <Carregando tamanho="lg" texto="Carregando..." />;
-      if (erroKanban) return <ErroMensagem titulo="Erro" mensagem="Falha ao carregar" />;
-      if (!kanban || kanban.length === 0) {
-        return <Vazio icone={<Users className="h-12 w-12" />} titulo="Sem dados" descricao="Nenhum dado de kanban" />;
+      if (carregandoKanban) return <EstadoCarregando texto="Carregando relatorio..." />;
+      if (erroKanban) return <EstadoErro titulo="Erro" mensagem="Falha ao carregar relatorio de kanban" onTentarNovamente={() => recarregarKanban()} />;
+      if (!kanban) {
+        return <EstadoVazio icone={<Users className="h-16 w-16" />} titulo="Sem dados" descricao="Nenhum dado de kanban disponivel" />;
       }
-
-      return (
-        <Card>
-          <CardHeader>
-            <CardTitle>Relatorio Kanban</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {kanban.map((item, index) => (
-                <div key={index} className="flex items-center justify-between py-3 border-b last:border-0">
-                  <div>
-                    <p className="font-medium">{item.nome}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.conversasAtendidas} itens | {item.mensagensEnviadas} movimentacoes
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm">Tempo medio</p>
-                    <p className="font-medium">{Math.round(item.tempoMedioResposta / 60)} min</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      );
+      return renderKanban(kanban);
     }
 
     if (tipoRelatorio === 'campanhas') {
-      if (carregandoCampanhas) return <Carregando tamanho="lg" texto="Carregando..." />;
-      if (erroCampanhas) return <ErroMensagem titulo="Erro" mensagem="Falha ao carregar" />;
-      if (!campanhas || campanhas.length === 0) {
-        return <Vazio icone={<Megaphone className="h-12 w-12" />} titulo="Sem dados" descricao="Nenhuma campanha" />;
+      if (carregandoCampanhas) return <EstadoCarregando texto="Carregando relatorio..." />;
+      if (erroCampanhas) return <EstadoErro titulo="Erro" mensagem="Falha ao carregar relatorio de campanhas" onTentarNovamente={() => recarregarCampanhas()} />;
+      if (!campanhas) {
+        return <EstadoVazio icone={<Megaphone className="h-16 w-16" />} titulo="Sem dados" descricao="Nenhuma campanha disponivel" />;
       }
-
-      return (
-        <Card>
-          <CardHeader>
-            <CardTitle>Desempenho das Campanhas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {campanhas.map((campanha) => (
-                <div key={campanha.campanhaId} className="py-3 border-b last:border-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium">{campanha.nome}</p>
-                    <span className="text-sm text-green-600">{campanha.taxaSucesso}% sucesso</span>
-                  </div>
-                  <div className="flex gap-4 text-sm text-muted-foreground">
-                    <span>Contatos: {campanha.totalContatos}</span>
-                    <span>Enviados: {campanha.enviados}</span>
-                    <span className="text-destructive">Erros: {campanha.erros}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      );
+      return renderCampanhas(campanhas);
     }
 
     return null;
@@ -226,40 +377,78 @@ export default function Relatorios() {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Relatorios</h1>
-        <p className="text-muted-foreground">Analise o desempenho do seu atendimento</p>
-      </div>
+    <div className="flex h-full">
+      {/* Sidebar Secundaria - Navegacao */}
+      <SidebarSecundaria largura="sm">
+        <CabecalhoSidebar
+          titulo="Relatorios"
+          subtitulo="Analise de dados"
+        />
 
-      {/* Tabs */}
-      <div className="flex gap-2">
-        <Button
-          variant={tipoRelatorio === 'conversas' ? 'default' : 'outline'}
-          onClick={() => setTipoRelatorio('conversas')}
-        >
-          <MessageSquare className="mr-2 h-4 w-4" />
-          Conversas
-        </Button>
-        <Button
-          variant={tipoRelatorio === 'kanban' ? 'default' : 'outline'}
-          onClick={() => setTipoRelatorio('kanban')}
-        >
-          <Users className="mr-2 h-4 w-4" />
-          Kanban
-        </Button>
-        <Button
-          variant={tipoRelatorio === 'campanhas' ? 'default' : 'outline'}
-          onClick={() => setTipoRelatorio('campanhas')}
-        >
-          <Megaphone className="mr-2 h-4 w-4" />
-          Campanhas
-        </Button>
-      </div>
+        <SecaoSidebar titulo="Tipo de Relatorio">
+          <ItemSidebar
+            icone={<MessageSquare className="h-4 w-4" />}
+            label="Conversas"
+            ativo={tipoRelatorio === 'conversas'}
+            onClick={() => setTipoRelatorio('conversas')}
+          />
+          <ItemSidebar
+            icone={<Users className="h-4 w-4" />}
+            label="Kanban"
+            ativo={tipoRelatorio === 'kanban'}
+            onClick={() => setTipoRelatorio('kanban')}
+          />
+          <ItemSidebar
+            icone={<Megaphone className="h-4 w-4" />}
+            label="Campanhas"
+            ativo={tipoRelatorio === 'campanhas'}
+            onClick={() => setTipoRelatorio('campanhas')}
+          />
+        </SecaoSidebar>
 
-      {/* Conteúdo */}
-      {renderConteudo()}
+        <SeparadorSidebar />
+
+        <SecaoSidebar titulo="Periodo">
+          <ItemSidebar
+            icone={<Clock className="h-4 w-4" />}
+            label="Ultimos 7 dias"
+            ativo={filtroPeriodo === '7d'}
+            onClick={() => setFiltroPeriodo('7d')}
+          />
+          <ItemSidebar
+            icone={<Clock className="h-4 w-4" />}
+            label="Ultimos 30 dias"
+            ativo={filtroPeriodo === '30d'}
+            onClick={() => setFiltroPeriodo('30d')}
+          />
+          <ItemSidebar
+            icone={<Clock className="h-4 w-4" />}
+            label="Ultimos 90 dias"
+            ativo={filtroPeriodo === '90d'}
+            onClick={() => setFiltroPeriodo('90d')}
+          />
+          <ItemSidebar
+            icone={<Clock className="h-4 w-4" />}
+            label="Ultimo ano"
+            ativo={filtroPeriodo === '365d'}
+            onClick={() => setFiltroPeriodo('365d')}
+          />
+        </SecaoSidebar>
+      </SidebarSecundaria>
+
+      {/* Conteudo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <CabecalhoPagina
+          titulo="Relatorios"
+          subtitulo="Analise o desempenho do seu atendimento"
+          icone={<FileBarChart className="h-5 w-5" />}
+        />
+
+        {/* Area de Conteudo */}
+        <div className="flex-1 overflow-auto p-6">
+          {renderConteudo()}
+        </div>
+      </div>
     </div>
   );
 }

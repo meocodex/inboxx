@@ -182,6 +182,29 @@ async function enviarMensagemCampanha(job: Job<JobCampanhaEnviarMensagem>): Prom
   logger.debug({ campanhaId, contatoId }, 'Worker: Enviando mensagem da campanha');
 
   try {
+    // ==========================================================================
+    // IDEMPOTÊNCIA: Verificar se mensagem já foi enviada
+    // ==========================================================================
+    const [logExistente] = await db
+      .select()
+      .from(campanhasLog)
+      .where(
+        and(
+          eq(campanhasLog.campanhaId, campanhaId),
+          eq(campanhasLog.contatoId, contatoId),
+          eq(campanhasLog.status, 'ENVIADO')
+        )
+      )
+      .limit(1);
+
+    if (logExistente && logExistente.enviadoEm) {
+      logger.info(
+        { campanhaId, contatoId, enviadoEm: logExistente.enviadoEm },
+        'Worker: Mensagem já foi enviada - pulando (idempotência)'
+      );
+      return; // Pular envio duplicado
+    }
+
     // TODO: Integrar com provedor WhatsApp real
     // Por enquanto, apenas simula o envio
     const enviado = Math.random() > 0.1; // 90% de sucesso simulado
@@ -221,6 +244,22 @@ async function enviarMensagemCampanha(job: Job<JobCampanhaEnviarMensagem>): Prom
           startAfter: new Date(Date.now() + 60000 * tentativa), // Backoff exponencial
         }
       );
+    } else {
+      // =======================================================================
+      // DEAD LETTER QUEUE: Enviar job para DLQ após 3 tentativas
+      // =======================================================================
+      logger.warn(
+        { campanhaId, contatoId, tentativa },
+        'Worker: Job falhou após 3 tentativas - enviando para DLQ'
+      );
+
+      await enviarJob('dlq.processar', {
+        origem: 'campanha.enviar-mensagem',
+        jobOriginal: { ...job.data, jobId: job.id },
+        erro: erro instanceof Error ? erro.message : 'Erro desconhecido',
+        tentativasOriginais: 3,
+        timestampFalha: new Date().toISOString(),
+      });
     }
   }
 }
@@ -232,11 +271,17 @@ async function enviarMensagemCampanha(job: Job<JobCampanhaEnviarMensagem>): Prom
 export async function registrarWorkersCampanhas(): Promise<void> {
   await registrarWorker('campanha.processar', processarCampanha, {
     batchSize: 1,
+    lockDuration: 300000, // 5 minutos (processa lote de contatos)
+    stalledInterval: 30000, // Verificar a cada 30s
+    maxStalledCount: 2, // Máx 2 tentativas
   });
 
   await registrarWorker('campanha.enviar-mensagem', enviarMensagemCampanha, {
     batchSize: 5,
+    lockDuration: 120000, // 2 minutos (envio simples)
+    stalledInterval: 30000,
+    maxStalledCount: 2,
   });
 
-  logger.info('Workers de campanhas registrados');
+  logger.info('Workers de campanhas registrados com timeouts configurados');
 }

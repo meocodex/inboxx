@@ -4,6 +4,7 @@ import { registrarWorkerMensagensAgendadas } from './mensagens-agendadas.worker.
 import { registrarWorkerLembretes } from './lembretes.worker.js';
 import { registrarWorkerWebhooksRetry } from './webhooks-retry.worker.js';
 import { registrarWorkerBuscaSincronizacao } from './sincronizacao-busca.worker.js';
+import { registrarWorkerDLQ } from './dlq.worker.js';
 
 // =============================================================================
 // Registrar Todos os Workers
@@ -12,6 +13,7 @@ import { registrarWorkerBuscaSincronizacao } from './sincronizacao-busca.worker.
 export async function registrarTodosWorkers(): Promise<void> {
   logger.info('Iniciando registro de workers...');
 
+  await registrarWorkerDLQ(); // DLQ primeiro (processa falhas de outros workers)
   await registrarWorkersCampanhas();
   await registrarWorkerMensagensAgendadas();
   await registrarWorkerLembretes();
@@ -30,3 +32,4 @@ export { registrarWorkerMensagensAgendadas } from './mensagens-agendadas.worker.
 export { registrarWorkerLembretes } from './lembretes.worker.js';
 export { registrarWorkerWebhooksRetry } from './webhooks-retry.worker.js';
 export { registrarWorkerBuscaSincronizacao } from './sincronizacao-busca.worker.js';
+export { registrarWorkerDLQ } from './dlq.worker.js';

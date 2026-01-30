@@ -138,6 +138,7 @@ export const nosServico = {
     }
 
     const [no] = await db.insert(nosChatbot).values({
+      clienteId,
       fluxoId,
       tipo: dados.tipo,
       nome: dados.nome,

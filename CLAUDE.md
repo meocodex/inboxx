@@ -17,7 +17,7 @@ CRM WhatsApp Omnichannel - A multi-tenant SaaS platform for WhatsApp/Instagram/F
 
 **Data Isolation:** PostgreSQL Row-Level Security (RLS) per `cliente_id`.
 
-## Current Project Status (Sprint 19-22 Complete)
+## Current Project Status (Sprint 19-23 Complete)
 
 ### Backend API - Fully Implemented
 - **20 modules** operational in `api/src/modulos/`
@@ -26,11 +26,13 @@ CRM WhatsApp Omnichannel - A multi-tenant SaaS platform for WhatsApp/Instagram/F
 - **WebSocket** real-time messaging via Socket.io
 - **Dual storage** (local filesystem + AWS S3)
 - **Test infrastructure** with Vitest + Supertest + factories
+- **XState Integration** for chatbot flow execution engine
 
 ### Frontend Web - Fully Implemented
-- **13 pages** in `web/src/paginas/`
+- **14 pages** in `web/src/paginas/`
 - **PWA support** with offline capabilities (IndexedDB + Service Worker)
-- **Build:** ~1781 modules, ~480KB (~156KB gzip)
+- **Visual Flow Builder** using React Flow (@xyflow/react)
+- **Build:** ~1800+ modules, ~500KB (~160KB gzip)
 
 ### Implemented Modules
 ```
@@ -47,7 +49,7 @@ api/src/modulos/
 ├── conversas/       # Conversations
 ├── mensagens/       # Messages
 ├── notas-internas/  # Internal notes
-├── chatbot/         # Flow builder + engine
+├── chatbot/         # Visual Flow Builder + XState Engine
 ├── campanhas/       # Mass messaging
 ├── kanban/          # Pipeline boards
 ├── agendamento/     # Scheduling + reminders
@@ -85,6 +87,57 @@ web/src/pwa/
 └── index.ts           # SW registration + online status
 ```
 
+### Chatbot Visual Flow Builder (Sprint 23)
+
+**Backend - XState Engine:**
+```
+api/src/modulos/chatbot/
+├── fluxos.controlador.ts        # Flow CRUD
+├── fluxos.servico.ts            # Flow business logic
+├── nos.controlador.ts           # Node CRUD
+├── nos.servico.ts               # Node business logic
+├── transicoes.controlador.ts    # Transitions CRUD + sync
+├── transicoes.servico.ts        # Transition business logic
+├── motor-fluxo.servico.ts       # XState machine executor
+└── index.ts                     # Module exports
+```
+
+**Frontend - React Flow Components:**
+```
+web/src/componentes/chatbot/
+├── CanvasFluxo.tsx          # Main React Flow canvas
+├── NoFluxo.tsx              # 10 node type components
+├── BarraFerramentas.tsx     # Draggable node toolbar
+├── PainelPropriedades.tsx   # Node property editor
+└── index.ts                 # Module exports
+
+web/src/paginas/chatbot/
+├── Chatbot.tsx              # Flow list page
+└── EditorFluxo.tsx          # Visual flow editor page
+```
+
+**Node Types (TipoNo):**
+- `INICIO` - Flow start point (Play icon, emerald)
+- `MENSAGEM` - Send text message (MessageCircle, blue)
+- `PERGUNTA` - Ask question & store response (HelpCircle, purple)
+- `MENU` - Multiple choice with branching (ListOrdered, amber)
+- `CONDICAO` - Conditional branching (GitBranch, orange)
+- `TRANSFERIR` - Transfer to team/agent (ArrowRightLeft, cyan)
+- `WEBHOOK` - HTTP request (Webhook, rose)
+- `ESPERAR` - Wait/delay (Clock, slate)
+- `ACAO` - Execute action (Zap, violet)
+- `FIM` - Flow end point (Square, red)
+
+**API Routes - Transitions:**
+```
+GET  /api/chatbot/fluxos/:fluxoId/transicoes          # List transitions
+POST /api/chatbot/fluxos/:fluxoId/transicoes          # Create transition
+POST /api/chatbot/fluxos/:fluxoId/transicoes/sincronizar  # Sync all
+POST /api/chatbot/fluxos/:fluxoId/compilar            # Compile to XState
+GET  /api/chatbot/fluxos/:fluxoId/machine             # Get XState machine
+POST /api/chatbot/fluxos/:fluxoId/validar             # Validate flow
+```
+
 ## Tech Stack (Mandatory)
 
 ### Backend
@@ -104,6 +157,7 @@ web/src/pwa/
 - **Data Fetching:** TanStack Query v5
 - **UI:** Tailwind CSS + shadcn/ui
 - **Forms:** React Hook Form + Zod
+- **Flow Builder:** React Flow (@xyflow/react) + XState
 - **i18n:** i18next (PT-BR + EN)
 - **Monitoring:** Sentry 10.x
 
@@ -134,6 +188,8 @@ useConversas.ts            # Hooks (camelCase)
 POST /api/autenticacao/entrar
 GET /api/conversas/:id/mensagens
 PUT /api/usuarios/:id/redefinir-senha
+POST /api/chatbot/fluxos/:fluxoId/transicoes/sincronizar
+POST /api/chatbot/fluxos/:fluxoId/compilar
 ```
 
 ### Database Tables (Portuguese, snake_case, plural)
@@ -169,8 +225,9 @@ crm-whatsapp/
 │
 ├── web/                        # React dashboard
 │   └── src/
-│       ├── paginas/            # 13 page components
+│       ├── paginas/            # 14 page components
 │       ├── componentes/        # UI components
+│       │   └── chatbot/        # Visual flow builder components
 │       ├── hooks/              # Custom hooks
 │       ├── servicos/           # API service layer (axios)
 │       ├── stores/             # Zustand state stores
@@ -178,9 +235,7 @@ crm-whatsapp/
 │       ├── configuracao/       # Runtime env config
 │       └── pwa/                # PWA offline support
 │
-├── infra/                      # Prometheus, Grafana configs
-├── docs/                       # Planning & specification documents
-└── docker-compose.yml          # Dev services (Redis, Meilisearch, etc.)
+└── docs/                       # Planning & specification documents
 ```
 
 ## Module Structure Pattern
@@ -221,6 +276,29 @@ throw new ErroSemPermissao('Sem permissão');
 preHandler: [app.autenticar, app.verificarPermissao('usuarios:criar')]
 ```
 
+### Chatbot XState Machine Pattern
+```typescript
+// Flow compilation: nodes + transitions → XState machine
+interface FluxoMachine {
+  id: string;
+  initial: string;
+  context: {
+    conversaId: string;
+    contatoId: string;
+    variaveis: Record<string, unknown>;
+  };
+  states: Record<string, StateConfig>;
+}
+
+// Transitions support: target, guards, actions
+interface TransicaoFluxo {
+  noOrigemId: string;
+  noDestinoId: string;
+  evento: string;        // 'PROXIMO', 'OPCAO_1', 'TIMEOUT'
+  condicao?: object;     // Guard condition (optional)
+}
+```
+
 ## User Profiles & Permissions
 
 - **SUPER_ADMIN:** Platform owner (license buyer), full access
@@ -241,10 +319,12 @@ preHandler: [app.autenticar, app.verificarPermissao('usuarios:criar')]
 9. ✅ Teams + Reports
 10. ✅ Kanban + Calendar
 11. ✅ PWA + Workers + Tests (Sprint 19-22)
+12. ✅ XState Chatbot + Visual Flow Builder (Sprint 23)
 
 ## Remaining Tasks
 
 - [ ] Production deployment (EasyPanel + Docker)
+- [ ] Database migration for chatbot transitions table (`npm run drizzle:push`)
 - [ ] End-to-end testing with real WhatsApp credentials
 - [ ] Performance optimization & load testing
 - [ ] Documentation for API consumers
@@ -270,6 +350,7 @@ preHandler: [app.autenticar, app.verificarPermissao('usuarios:criar')]
 - **ioredis** ^5.3.2 - Redis client
 - **jose** ^6.1.3 - JWT signing/verification
 - **axios** ^1.13.2 - HTTP client (WhatsApp API)
+- **xstate** ^5.x - Chatbot flow state machine engine
 - **@sentry/node** ^10.37.0 - Error tracking
 - **prom-client** ^15.1.3 - Prometheus metrics
 - **vitest** ^4.0.18 - Test framework
@@ -280,6 +361,9 @@ preHandler: [app.autenticar, app.verificarPermissao('usuarios:criar')]
 - **@tanstack/react-query** ^5.28.0 - Data fetching
 - **zustand** ^5.0.10 - State management
 - **socket.io-client** ^4.8.3 - WebSocket
+- **@xyflow/react** ^12.x - Visual flow builder (React Flow)
+- **xstate** ^5.x - State machine library
+- **@xstate/react** ^5.x - XState React bindings
 - **i18next** ^25.8.0 - Internationalization
 - **@sentry/react** ^10.37.0 - Error tracking
 - **workbox-window** ^7.4.0 - PWA/Service Worker
@@ -289,10 +373,9 @@ preHandler: [app.autenticar, app.verificarPermissao('usuarios:criar')]
 
 Everything runs on port 5000 (Fastify serves both API and frontend).
 
-```bash
-# Infrastructure (Redis, Meilisearch, etc.)
-docker-compose up -d
+**Production (EasyPanel):** Just push to Git - EasyPanel builds using the Dockerfile automatically.
 
+```bash
 # Install dependencies
 cd api && npm install
 cd web && npm install
@@ -305,10 +388,6 @@ cd api && npm run dev            # Everything on :5000
 # Or use the unified build script:
 cd api && npm run build:full     # Builds web + API
 cd api && npm run dev            # Port 5000
-
-# Production (Docker)
-docker build -t crm .            # Uses root Dockerfile
-docker run -p 5000:5000 crm      # Everything on port 5000
 
 # Seed Database
 cd api

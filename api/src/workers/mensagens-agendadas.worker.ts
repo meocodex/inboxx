@@ -82,6 +82,7 @@ async function enviarMensagemAgendada(job: Job<JobMensagemAgendada>): Promise<vo
     const [mensagem] = await db
       .insert(mensagens)
       .values({
+        clienteId: conversa.clienteId,
         conversaId: conversa.id,
         direcao: 'SAIDA',
         tipo: (tipo ?? 'TEXTO') as 'TEXTO' | 'IMAGEM' | 'AUDIO' | 'VIDEO' | 'DOCUMENTO' | 'LOCALIZACAO' | 'CONTATO' | 'STICKER',
@@ -145,7 +146,10 @@ async function enviarMensagemAgendada(job: Job<JobMensagemAgendada>): Promise<vo
 export async function registrarWorkerMensagensAgendadas(): Promise<void> {
   await registrarWorker('mensagem-agendada.enviar', enviarMensagemAgendada, {
     batchSize: 3,
+    lockDuration: 120000, // 2 minutos (envio simples)
+    stalledInterval: 30000, // Verificar a cada 30s
+    maxStalledCount: 2, // Máx 2 tentativas
   });
 
-  logger.info('Worker de mensagens agendadas registrado');
+  logger.info('Worker de mensagens agendadas registrado com timeout configurado');
 }

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Kanban as KanbanIcon, ArrowLeft } from 'lucide-react';
+import { Plus, Kanban as KanbanIcon, ArrowLeft, Layout } from 'lucide-react';
 import { kanbanServico } from '@/servicos';
 import { useToast } from '@/hooks';
 import { Button } from '@/componentes/ui/button';
@@ -11,10 +11,19 @@ import { Input } from '@/componentes/ui/input';
 import { Label } from '@/componentes/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import { ScrollArea, ScrollBar } from '@/componentes/ui/scroll-area';
-import { Carregando } from '@/componentes/comum/Carregando';
-import { ErroMensagem, Vazio } from '@/componentes/comum/ErroMensagem';
+import {
+  SidebarSecundaria,
+  CabecalhoSidebar,
+  SecaoSidebar,
+  ItemSidebar,
+  CabecalhoPagina,
+  GridCards,
+  EstadoVazio,
+  EstadoCarregando,
+  EstadoErro,
+} from '@/componentes/layout';
 import { ColunaKanban } from '@/componentes/kanban/ColunaKanban';
-import type { QuadroResumo, Cartao } from '@/tipos';
+import type { Cartao } from '@/tipos';
 
 // =============================================================================
 // Schemas
@@ -35,68 +44,6 @@ type QuadroForm = z.infer<typeof quadroSchema>;
 type CartaoForm = z.infer<typeof cartaoSchema>;
 
 // =============================================================================
-// Componente Lista de Quadros
-// =============================================================================
-
-interface ListaQuadrosProps {
-  quadros: QuadroResumo[];
-  carregando: boolean;
-  onSelecionar: (id: string) => void;
-  onNovo: () => void;
-}
-
-function ListaQuadros({ quadros, carregando, onSelecionar, onNovo }: ListaQuadrosProps) {
-  if (carregando) {
-    return (
-      <div className="flex justify-center py-12">
-        <Carregando tamanho="lg" texto="Carregando quadros..." />
-      </div>
-    );
-  }
-
-  if (quadros.length === 0) {
-    return (
-      <Vazio
-        icone={<KanbanIcon className="h-16 w-16" />}
-        titulo="Nenhum quadro"
-        descricao="Crie seu primeiro quadro kanban"
-        acao={
-          <Button onClick={onNovo}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Quadro
-          </Button>
-        }
-      />
-    );
-  }
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {quadros.map((quadro) => (
-        <Card
-          key={quadro.id}
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => onSelecionar(quadro.id)}
-        >
-          <CardHeader>
-            <CardTitle className="text-lg">{quadro.nome}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {quadro.descricao && (
-              <p className="text-sm text-muted-foreground mb-2">{quadro.descricao}</p>
-            )}
-            <div className="flex gap-4 text-sm text-muted-foreground">
-              <span>{quadro.totalColunas} colunas</span>
-              <span>{quadro.totalCartoes} cartoes</span>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-// =============================================================================
 // Componente Principal
 // =============================================================================
 
@@ -112,7 +59,12 @@ export default function Kanban() {
   // ---------------------------------------------------------------------------
   // Queries
   // ---------------------------------------------------------------------------
-  const { data: quadros, isLoading: carregandoQuadros } = useQuery({
+  const {
+    data: quadros,
+    isLoading: carregandoQuadros,
+    error: erroQuadros,
+    refetch: recarregar,
+  } = useQuery({
     queryKey: ['kanban', 'quadros'],
     queryFn: kanbanServico.listarQuadros,
   });
@@ -211,7 +163,6 @@ export default function Kanban() {
   };
 
   const handleDropCartao = useCallback((cartaoId: string, colunaDestinoId: string, ordem: number) => {
-    // Find the source column from current quadro data
     const colunaOrigemId = quadroAtual?.colunas.find(
       col => col.cartoes.some(c => c.id === cartaoId)
     )?.id || colunaDestinoId;
@@ -228,130 +179,161 @@ export default function Kanban() {
   }, [cartaoForm]);
 
   // ---------------------------------------------------------------------------
-  // Render - Visualização do Quadro
+  // Erro
   // ---------------------------------------------------------------------------
-  if (quadroSelecionadoId) {
-    if (carregandoQuadro) {
-      return (
-        <div className="flex justify-center py-12">
-          <Carregando tamanho="lg" texto="Carregando quadro..." />
-        </div>
-      );
-    }
-
-    if (!quadroAtual) {
-      return <ErroMensagem titulo="Erro" mensagem="Quadro nao encontrado" />;
-    }
-
+  if (erroQuadros) {
     return (
-      <div className="space-y-4 p-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => setQuadroSelecionadoId(null)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">{quadroAtual.nome}</h1>
-            {quadroAtual.descricao && (
-              <p className="text-muted-foreground">{quadroAtual.descricao}</p>
-            )}
-          </div>
+      <div className="flex h-full">
+        <div className="flex-1 flex items-center justify-center">
+          <EstadoErro
+            titulo="Erro ao carregar quadros"
+            mensagem="Nao foi possivel carregar os quadros"
+            onTentarNovamente={() => recarregar()}
+          />
         </div>
-
-        {/* Colunas */}
-        <ScrollArea className="w-full">
-          <div className="flex gap-4 pb-4 min-h-[500px]">
-            {quadroAtual.colunas
-              .sort((a, b) => a.ordem - b.ordem)
-              .map((coluna) => (
-                <ColunaKanban
-                  key={coluna.id}
-                  coluna={coluna}
-                  onAdicionarCartao={(colunaId) => {
-                    setModalCartao({ colunaId });
-                    cartaoForm.reset({ titulo: '', descricao: '', valor: 0 });
-                  }}
-                  onEditarCartao={handleEditarCartao}
-                  onExcluirCartao={(cartaoId) => excluirCartaoMutation.mutate({ cartaoId, colunaId: coluna.id })}
-                  onEditarColuna={() => {}}
-                  onExcluirColuna={() => {}}
-                  onDropCartao={handleDropCartao}
-                />
-              ))}
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-
-        {/* Modal Cartão */}
-        {(modalCartao || cartaoEditando) && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <Card className="w-full max-w-md">
-              <CardHeader>
-                <CardTitle>{cartaoEditando ? 'Editar Cartao' : 'Novo Cartao'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form
-                  onSubmit={cartaoForm.handleSubmit(cartaoEditando ? handleAtualizarCartao : handleCriarCartao)}
-                  className="space-y-4"
-                >
-                  <div className="space-y-2">
-                    <Label htmlFor="titulo">Titulo *</Label>
-                    <Input id="titulo" {...cartaoForm.register('titulo')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="descricao">Descricao</Label>
-                    <Input id="descricao" {...cartaoForm.register('descricao')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="valor">Valor (R$)</Label>
-                    <Input id="valor" type="number" step="0.01" {...cartaoForm.register('valor')} />
-                  </div>
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setModalCartao(null);
-                        setCartaoEditando(null);
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button type="submit">
-                      {cartaoEditando ? 'Salvar' : 'Criar'}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </div>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Render - Lista de Quadros
-  // ---------------------------------------------------------------------------
-  return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Kanban</h1>
-          <p className="text-muted-foreground">Gerencie seus pipelines de vendas</p>
-        </div>
-        <Button onClick={() => setModalQuadro(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Quadro
-        </Button>
-      </div>
+  const listaQuadros = quadros || [];
 
-      <ListaQuadros
-        quadros={quadros || []}
-        carregando={carregandoQuadros}
-        onSelecionar={setQuadroSelecionadoId}
-        onNovo={() => setModalQuadro(true)}
-      />
+  return (
+    <div className="flex h-full">
+      {/* Sidebar Secundaria - Lista de Quadros */}
+      <SidebarSecundaria largura="sm">
+        <CabecalhoSidebar
+          titulo="Kanban"
+          subtitulo={`${listaQuadros.length} quadros`}
+          acoes={
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setModalQuadro(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          }
+        />
+
+        <SecaoSidebar titulo="Quadros">
+          {carregandoQuadros ? (
+            <div className="p-4">
+              <EstadoCarregando />
+            </div>
+          ) : listaQuadros.length === 0 ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              Nenhum quadro criado
+            </div>
+          ) : (
+            listaQuadros.map((quadro) => (
+              <ItemSidebar
+                key={quadro.id}
+                icone={<Layout className="h-4 w-4" />}
+                label={quadro.nome}
+                badge={quadro.totalCartoes}
+                ativo={quadroSelecionadoId === quadro.id}
+                onClick={() => setQuadroSelecionadoId(quadro.id)}
+              />
+            ))
+          )}
+        </SecaoSidebar>
+      </SidebarSecundaria>
+
+      {/* Conteudo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {quadroSelecionadoId && quadroAtual ? (
+          <>
+            <CabecalhoPagina
+              titulo={quadroAtual.nome}
+              subtitulo={quadroAtual.descricao || 'Pipeline de vendas'}
+              icone={<KanbanIcon className="h-5 w-5" />}
+              acoes={
+                <Button variant="outline" size="sm" onClick={() => setQuadroSelecionadoId(null)}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar
+                </Button>
+              }
+            />
+
+            {/* Colunas do Kanban */}
+            <div className="flex-1 overflow-auto p-4">
+              {carregandoQuadro ? (
+                <EstadoCarregando texto="Carregando quadro..." />
+              ) : (
+                <ScrollArea className="w-full h-full">
+                  <div className="flex gap-4 pb-4 min-h-[500px]">
+                    {quadroAtual.colunas
+                      .sort((a, b) => a.ordem - b.ordem)
+                      .map((coluna) => (
+                        <ColunaKanban
+                          key={coluna.id}
+                          coluna={coluna}
+                          onAdicionarCartao={(colunaId) => {
+                            setModalCartao({ colunaId });
+                            cartaoForm.reset({ titulo: '', descricao: '', valor: 0 });
+                          }}
+                          onEditarCartao={handleEditarCartao}
+                          onExcluirCartao={(cartaoId) => excluirCartaoMutation.mutate({ cartaoId, colunaId: coluna.id })}
+                          onEditarColuna={() => {}}
+                          onExcluirColuna={() => {}}
+                          onDropCartao={handleDropCartao}
+                        />
+                      ))}
+                  </div>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <CabecalhoPagina
+              titulo="Kanban"
+              subtitulo="Gerencie seus pipelines de vendas"
+              icone={<KanbanIcon className="h-5 w-5" />}
+              acoes={
+                <Button onClick={() => setModalQuadro(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Quadro
+                </Button>
+              }
+            />
+
+            {/* Lista de Quadros */}
+            <div className="flex-1 overflow-auto p-6">
+              {carregandoQuadros ? (
+                <EstadoCarregando texto="Carregando quadros..." />
+              ) : listaQuadros.length === 0 ? (
+                <EstadoVazio
+                  titulo="Nenhum quadro"
+                  descricao="Crie seu primeiro quadro kanban para gerenciar vendas"
+                  icone={<KanbanIcon className="h-16 w-16" />}
+                  acao={{ label: 'Novo Quadro', onClick: () => setModalQuadro(true) }}
+                />
+              ) : (
+                <GridCards colunas={3}>
+                  {listaQuadros.map((quadro) => (
+                    <Card
+                      key={quadro.id}
+                      className="cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => setQuadroSelecionadoId(quadro.id)}
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-lg">{quadro.nome}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {quadro.descricao && (
+                          <p className="text-sm text-muted-foreground mb-2">{quadro.descricao}</p>
+                        )}
+                        <div className="flex gap-4 text-sm text-muted-foreground">
+                          <span>{quadro.totalColunas} colunas</span>
+                          <span>{quadro.totalCartoes} cartoes</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </GridCards>
+              )}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Modal Quadro */}
       {modalQuadro && (
@@ -375,6 +357,51 @@ export default function Kanban() {
                     Cancelar
                   </Button>
                   <Button type="submit">Criar</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal Cartao */}
+      {(modalCartao || cartaoEditando) && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>{cartaoEditando ? 'Editar Cartao' : 'Novo Cartao'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form
+                onSubmit={cartaoForm.handleSubmit(cartaoEditando ? handleAtualizarCartao : handleCriarCartao)}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="titulo">Titulo *</Label>
+                  <Input id="titulo" {...cartaoForm.register('titulo')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="descricao">Descricao</Label>
+                  <Input id="descricao" {...cartaoForm.register('descricao')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="valor">Valor (R$)</Label>
+                  <Input id="valor" type="number" step="0.01" {...cartaoForm.register('valor')} />
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setModalCartao(null);
+                      setCartaoEditando(null);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit">
+                    {cartaoEditando ? 'Salvar' : 'Criar'}
+                  </Button>
                 </div>
               </form>
             </CardContent>

@@ -1,4 +1,5 @@
 import { eq, and, or, ilike, ne, count, sql, desc, asc, notInArray, inArray } from 'drizzle-orm';
+import { createHash } from 'crypto';
 import { db } from '../../infraestrutura/banco/drizzle.servico.js';
 import {
   conversas,
@@ -14,6 +15,8 @@ import {
 import { ErroNaoEncontrado, ErroValidacao } from '../../compartilhado/erros/index.js';
 import { buscar, meilisearchDisponivel, INDICES } from '../../infraestrutura/busca/index.js';
 import { enviarJob } from '../../infraestrutura/filas/index.js';
+import { cacheConversas } from '../../infraestrutura/cache/redis.servico.js';
+import { logger } from '../../compartilhado/utilitarios/logger.js';
 import type { ConversaDocumento } from '../../infraestrutura/busca/index.js';
 import type {
   CriarConversaDTO,
@@ -21,6 +24,28 @@ import type {
   ListarConversasQuery,
   TransferirConversaDTO,
 } from './conversas.schema.js';
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function gerarChaveCache(clienteId: string, usuarioId: string, query: ListarConversasQuery): string {
+  const hash = createHash('md5')
+    .update(JSON.stringify({ clienteId, usuarioId, ...query }))
+    .digest('hex');
+  return `listar:${clienteId}:${hash}`;
+}
+
+async function invalidarCacheConversas(clienteId: string): Promise<void> {
+  try {
+    const total = await cacheConversas.invalidar(`listar:${clienteId}:*`);
+    if (total > 0) {
+      logger.debug({ clienteId, total }, 'Cache de conversas invalidado');
+    }
+  } catch (erro) {
+    logger.error({ erro, clienteId }, 'Erro ao invalidar cache de conversas');
+  }
+}
 
 // =============================================================================
 // Servico de Conversas
@@ -42,6 +67,22 @@ export const conversasServico = {
       ordem,
     } = query;
     const skip = (pagina - 1) * limite;
+
+    // ==========================================================================
+    // CACHE: Verificar cache Redis (TTL 60s)
+    // ==========================================================================
+    const chaveCache = gerarChaveCache(clienteId, usuarioId, query);
+    const cached = await cacheConversas.get<{
+      dados: unknown[];
+      meta: { total: number; pagina: number; limite: number; totalPaginas: number };
+    }>(chaveCache);
+
+    if (cached) {
+      logger.debug({ chaveCache }, 'Conversas: Cache HIT');
+      return cached;
+    }
+
+    logger.debug({ chaveCache }, 'Conversas: Cache MISS - executando query');
 
     // Build dynamic conditions
     const conditions = [eq(conversas.clienteId, clienteId)];
@@ -101,10 +142,9 @@ export const conversasServico = {
     const orderColumn = ordenarPor === 'ultimaMensagemEm' ? conversas.ultimaMensagemEm : conversas.criadoEm;
     const orderDirection = ordem === 'asc' ? asc(orderColumn) : desc(orderColumn);
 
-    // Subqueries for counts
-    const totalMensagensSubquery = sql<number>`(SELECT count(*) FROM ${mensagens} WHERE ${mensagens.conversaId} = ${conversas.id})`.mapWith(Number);
-    const totalNotasSubquery = sql<number>`(SELECT count(*) FROM ${notasInternas} WHERE ${notasInternas.conversaId} = ${conversas.id})`.mapWith(Number);
-
+    // ==========================================================================
+    // OTIMIZAÇÃO: 1 query com LEFT JOIN + COUNT + GROUP BY (antes: 101 queries)
+    // ==========================================================================
     const [rows, totalResult] = await Promise.all([
       db
         .select({
@@ -124,15 +164,25 @@ export const conversasServico = {
           usuarioAvatarUrl: usuarios.avatarUrl,
           equipeIdRel: equipes.id,
           equipeNome: equipes.nome,
-          totalMensagens: totalMensagensSubquery,
-          totalNotas: totalNotasSubquery,
+          // COUNT com LEFT JOIN (evita N+1 queries)
+          totalMensagens: sql<number>`COUNT(DISTINCT ${mensagens.id})`.mapWith(Number),
+          totalNotas: sql<number>`COUNT(DISTINCT ${notasInternas.id})`.mapWith(Number),
         })
         .from(conversas)
         .leftJoin(contatos, eq(conversas.contatoId, contatos.id))
         .leftJoin(conexoes, eq(conversas.conexaoId, conexoes.id))
         .leftJoin(usuarios, eq(conversas.usuarioId, usuarios.id))
         .leftJoin(equipes, eq(conversas.equipeId, equipes.id))
+        .leftJoin(mensagens, eq(mensagens.conversaId, conversas.id))
+        .leftJoin(notasInternas, eq(notasInternas.conversaId, conversas.id))
         .where(whereClause)
+        .groupBy(
+          conversas.id,
+          contatos.id,
+          conexoes.id,
+          usuarios.id,
+          equipes.id
+        )
         .orderBy(orderDirection)
         .limit(limite)
         .offset(skip),
@@ -174,7 +224,7 @@ export const conversasServico = {
       totalNotas: row.totalNotas,
     }));
 
-    return {
+    const resultado = {
       dados: conversasFormatadas,
       meta: {
         total,
@@ -183,6 +233,13 @@ export const conversasServico = {
         totalPaginas: Math.ceil(total / limite),
       },
     };
+
+    // ==========================================================================
+    // CACHE: Armazenar resultado (TTL 60s)
+    // ==========================================================================
+    await cacheConversas.set(chaveCache, resultado, 60);
+
+    return resultado;
   },
 
   async obterPorId(clienteId: string, id: string) {
@@ -380,6 +437,9 @@ export const conversasServico = {
     // Sincronizar com Meilisearch
     enviarJob('busca.sincronizar', { operacao: 'indexar', indice: 'conversas', clienteId, documentoId: conversaCriada.id }).catch(() => {});
 
+    // Invalidar cache
+    await invalidarCacheConversas(clienteId);
+
     return {
       id: conversaCriada.id,
       status: conversaCriada.status,
@@ -473,6 +533,9 @@ export const conversasServico = {
     // Sincronizar com Meilisearch
     enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'conversas', clienteId, documentoId: id }).catch(() => {});
 
+    // Invalidar cache
+    await invalidarCacheConversas(clienteId);
+
     return {
       id: updated.id,
       status: updated.status,
@@ -562,6 +625,9 @@ export const conversasServico = {
     // Sincronizar com Meilisearch
     enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'conversas', clienteId, documentoId: id }).catch(() => {});
 
+    // Invalidar cache
+    await invalidarCacheConversas(clienteId);
+
     return {
       id: updated.id,
       status: updated.status,
@@ -597,6 +663,9 @@ export const conversasServico = {
 
     // Sincronizar com Meilisearch
     enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'conversas', clienteId, documentoId: id }).catch(() => {});
+
+    // Invalidar cache
+    await invalidarCacheConversas(clienteId);
 
     return updated;
   },

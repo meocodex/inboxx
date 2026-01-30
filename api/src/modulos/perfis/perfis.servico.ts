@@ -2,6 +2,8 @@ import { eq, and, or, ilike, ne, count, sql, isNull, asc, desc } from 'drizzle-o
 import { db } from '../../infraestrutura/banco/drizzle.servico.js';
 import { perfis, usuarios } from '../../infraestrutura/banco/schema/index.js';
 import { ErroNaoEncontrado, ErroValidacao } from '../../compartilhado/erros/index.js';
+import { cachePerfis } from '../../infraestrutura/cache/redis.servico.js';
+import { logger } from '../../compartilhado/utilitarios/logger.js';
 import type { CriarPerfilDTO, AtualizarPerfilDTO, ListarPerfisQuery } from './perfis.schema.js';
 
 // =============================================================================
@@ -15,6 +17,28 @@ const orderByMap = {
 } as const;
 
 const totalUsuariosSubquery = sql<number>`(SELECT count(*) FROM usuarios WHERE usuarios.perfil_id = ${perfis.id})`.mapWith(Number);
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+async function invalidarCachePerfil(perfilId: string): Promise<void> {
+  try {
+    // Invalidar cache do perfil completo
+    await cachePerfis.delete(`obter:${perfilId}`);
+
+    // Invalidar cache de permissões (usado no middleware de autenticação)
+    await cachePerfis.delete(`permissoes:${perfilId}`);
+
+    logger.debug({ perfilId }, 'Cache de perfil invalidado (obter + permissões)');
+  } catch (erro) {
+    logger.error({ erro, perfilId }, 'Erro ao invalidar cache de perfil');
+  }
+}
+
+// =============================================================================
+// Servico de Perfis
+// =============================================================================
 
 export const perfisServico = {
   async listar(clienteId: string | null, query: ListarPerfisQuery) {
@@ -90,6 +114,30 @@ export const perfisServico = {
   },
 
   async obterPorId(clienteId: string | null, id: string) {
+    // ==========================================================================
+    // CACHE: Verificar cache Redis (TTL 3600s - 1h)
+    // Perfis mudam raramente, então TTL alto é seguro
+    // ==========================================================================
+    const chaveCache = `obter:${id}`;
+    const cached = await cachePerfis.get<{
+      id: string;
+      nome: string;
+      descricao: string | null;
+      permissoes: string[];
+      editavel: boolean;
+      global: boolean;
+      totalUsuarios: number;
+      criadoEm: Date;
+      atualizadoEm: Date;
+    }>(chaveCache);
+
+    if (cached) {
+      logger.debug({ chaveCache, perfilId: id }, 'Perfil: Cache HIT');
+      return cached;
+    }
+
+    logger.debug({ chaveCache, perfilId: id }, 'Perfil: Cache MISS - executando query');
+
     const baseCondition = clienteId
       ? or(eq(perfis.clienteId, clienteId), isNull(perfis.clienteId))
       : isNull(perfis.clienteId);
@@ -116,7 +164,7 @@ export const perfisServico = {
 
     const perfil = result[0];
 
-    return {
+    const resultado = {
       id: perfil.id,
       nome: perfil.nome,
       descricao: perfil.descricao,
@@ -127,6 +175,13 @@ export const perfisServico = {
       criadoEm: perfil.criadoEm,
       atualizadoEm: perfil.atualizadoEm,
     };
+
+    // ==========================================================================
+    // CACHE: Armazenar resultado (TTL 3600s - 1h)
+    // ==========================================================================
+    await cachePerfis.set(chaveCache, resultado, 3600);
+
+    return resultado;
   },
 
   async criar(clienteId: string, dados: CriarPerfilDTO) {
@@ -159,6 +214,7 @@ export const perfisServico = {
         criadoEm: perfis.criadoEm,
       });
 
+    // Cache não precisa invalidação pois perfil é novo
     return {
       id: perfil.id,
       nome: perfil.nome,
@@ -238,6 +294,9 @@ export const perfisServico = {
         atualizadoEm: perfis.atualizadoEm,
       });
 
+    // Invalidar cache (CRÍTICO para middleware de autenticação)
+    await invalidarCachePerfil(id);
+
     return {
       id: perfil.id,
       nome: perfil.nome,
@@ -289,6 +348,9 @@ export const perfisServico = {
     }
 
     await db.delete(perfis).where(eq(perfis.id, id));
+
+    // Invalidar cache
+    await invalidarCachePerfil(id);
   },
 
   async duplicar(clienteId: string, id: string, novoNome: string) {

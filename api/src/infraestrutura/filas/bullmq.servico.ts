@@ -158,6 +158,9 @@ export async function agendarJob<T extends NomeJob>(
 interface WorkerOpcoes {
   batchSize?: number;
   pollingIntervalSeconds?: number;
+  lockDuration?: number; // Duração máxima do lock (ms) - timeout do job
+  stalledInterval?: number; // Intervalo para verificar jobs travados (ms)
+  maxStalledCount?: number; // Máximo de vezes que pode ficar travado
 }
 
 // Interface de job compatível com pg-boss (id, name, data)
@@ -185,11 +188,28 @@ export async function registrarWorker<T extends NomeJob>(
         name: job.name,
         data: job.data,
       };
-      await handler(jobCompat);
+
+      // Timeout individual por job
+      const lockDuration = opcoes?.lockDuration ?? 120000; // 2 min padrão
+      const timeoutId = setTimeout(() => {
+        logger.error(
+          { jobId: job.id, nome, lockDuration },
+          'BullMQ: Job excedeu timeout - será marcado como stalled'
+        );
+      }, lockDuration);
+
+      try {
+        await handler(jobCompat);
+      } finally {
+        clearTimeout(timeoutId);
+      }
     },
     {
       connection: redisConnection,
       concurrency,
+      lockDuration: opcoes?.lockDuration ?? 120000, // 2 minutos lock padrão
+      ...(opcoes?.stalledInterval && { stalledInterval: opcoes.stalledInterval }),
+      ...(opcoes?.maxStalledCount && { maxStalledCount: opcoes.maxStalledCount }),
     },
   );
 

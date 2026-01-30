@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { LayoutPrincipal } from '@/componentes/layout';
+import { LayoutPrincipal, ErrorBoundary } from '@/componentes/layout';
 import { CarregandoPagina } from '@/componentes/comum/Carregando';
 
 // =============================================================================
@@ -16,17 +16,22 @@ const Campanhas = lazy(() => import('@/paginas/campanhas/Campanhas'));
 const Relatorios = lazy(() => import('@/paginas/relatorios/Relatorios'));
 const Etiquetas = lazy(() => import('@/paginas/etiquetas/Etiquetas'));
 const Chatbot = lazy(() => import('@/paginas/chatbot/Chatbot'));
+const EditorFluxo = lazy(() => import('@/paginas/chatbot/EditorFluxo'));
 const Agenda = lazy(() => import('@/paginas/agenda/Agenda'));
 const Configuracoes = lazy(() => import('@/paginas/configuracoes/Configuracoes'));
 const Conexoes = lazy(() => import('@/paginas/conexoes/Conexoes'));
 const Usuarios = lazy(() => import('@/paginas/usuarios/Usuarios'));
 
 // =============================================================================
-// Wrapper de Suspense
+// Wrapper de Suspense + ErrorBoundary
 // =============================================================================
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<CarregandoPagina />}>{children}</Suspense>;
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<CarregandoPagina />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
 }
 
 // =============================================================================
@@ -86,6 +91,14 @@ export const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <Chatbot />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'chatbot/fluxo/:id',
+        element: (
+          <SuspenseWrapper>
+            <EditorFluxo />
           </SuspenseWrapper>
         ),
       },

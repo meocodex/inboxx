@@ -1,0 +1,25 @@
+{
+  "name": "crm-whatsapp",
+  "version": "1.0.0",
+  "description": "CRM WhatsApp Omnichannel - Multi-tenant SaaS Platform",
+  "private": true,
+  "scripts": {
+    "install:all": "cd api && npm install && cd ../web && npm install",
+    "dev": "npm run build && cd api && npm run dev",
+    "dev:watch": "cd web && npm run build -- --watch & cd api && npm run dev",
+    "build": "cd web && npm run build",
+    "build:api": "cd api && npm run build",
+    "build:all": "npm run build && npm run build:api",
+    "start": "cd api && npm start",
+    "test": "cd api && npm test",
+    "test:web": "cd web && npm test",
+    "test:all": "npm run test && npm run test:web",
+    "drizzle:push": "cd api && npm run drizzle:push",
+    "drizzle:studio": "cd api && npm run drizzle:studio",
+    "seed": "cd api && npx tsx scripts/seed.ts",
+    "seed:cliente": "cd api && npx tsx scripts/seed-cliente.ts"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

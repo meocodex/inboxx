@@ -10,8 +10,19 @@ import { Button } from '@/componentes/ui/button';
 import { Input } from '@/componentes/ui/input';
 import { Label } from '@/componentes/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
-import { Carregando } from '@/componentes/comum/Carregando';
-import { ErroMensagem, Vazio } from '@/componentes/comum/ErroMensagem';
+import {
+  SidebarSecundaria,
+  CabecalhoSidebar,
+  SecaoSidebar,
+  ItemSidebar,
+  CabecalhoPagina,
+  CardItem,
+  CardItemConteudo,
+  GridCards,
+  EstadoVazio,
+  EstadoCarregando,
+  EstadoErro,
+} from '@/componentes/layout';
 import type { Etiqueta } from '@/tipos';
 
 // =============================================================================
@@ -26,7 +37,7 @@ const etiquetaSchema = z.object({
 type EtiquetaForm = z.infer<typeof etiquetaSchema>;
 
 // =============================================================================
-// Cores Pré-definidas
+// Cores Pre-definidas
 // =============================================================================
 
 const CORES_PREDEFINIDAS = [
@@ -34,6 +45,18 @@ const CORES_PREDEFINIDAS = [
   '#84cc16', '#22c55e', '#14b8a6', '#06b6d4',
   '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7',
   '#d946ef', '#ec4899', '#f43f5e', '#64748b',
+];
+
+// Agrupar cores para sidebar
+const GRUPOS_CORES = [
+  { nome: 'Vermelho', cores: ['#ef4444', '#f43f5e'] },
+  { nome: 'Laranja', cores: ['#f97316', '#f59e0b'] },
+  { nome: 'Amarelo', cores: ['#eab308', '#84cc16'] },
+  { nome: 'Verde', cores: ['#22c55e', '#14b8a6'] },
+  { nome: 'Azul', cores: ['#06b6d4', '#3b82f6'] },
+  { nome: 'Roxo', cores: ['#6366f1', '#8b5cf6', '#a855f7'] },
+  { nome: 'Rosa', cores: ['#d946ef', '#ec4899'] },
+  { nome: 'Cinza', cores: ['#64748b'] },
 ];
 
 // =============================================================================
@@ -46,6 +69,7 @@ export default function Etiquetas() {
 
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<Etiqueta | null>(null);
+  const [corFiltro, setCorFiltro] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Query
@@ -132,78 +156,138 @@ export default function Etiquetas() {
   };
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Erro
   // ---------------------------------------------------------------------------
   if (erro) {
     return (
-      <ErroMensagem
-        titulo="Erro ao carregar etiquetas"
-        mensagem="Nao foi possivel carregar a lista"
-        onTentarNovamente={() => recarregar()}
-      />
+      <div className="flex h-full">
+        <div className="flex-1 flex items-center justify-center">
+          <EstadoErro
+            titulo="Erro ao carregar etiquetas"
+            mensagem="Nao foi possivel carregar a lista"
+            onTentarNovamente={() => recarregar()}
+          />
+        </div>
+      </div>
     );
   }
 
-  return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Etiquetas</h1>
-          <p className="text-muted-foreground">Organize seus contatos com etiquetas</p>
-        </div>
-        <Button onClick={abrirCriar}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Etiqueta
-        </Button>
-      </div>
+  const listaEtiquetas = etiquetas || [];
 
-      {/* Lista */}
-      {carregando ? (
-        <div className="flex justify-center py-12">
-          <Carregando tamanho="lg" texto="Carregando etiquetas..." />
-        </div>
-      ) : !etiquetas || etiquetas.length === 0 ? (
-        <Vazio
-          icone={<Tag className="h-16 w-16" />}
-          titulo="Nenhuma etiqueta"
-          descricao="Crie sua primeira etiqueta"
-          acao={
+  // Filtrar por cor
+  const etiquetasFiltradas = corFiltro
+    ? listaEtiquetas.filter((e) => {
+        const grupo = GRUPOS_CORES.find((g) => g.cores.includes(corFiltro));
+        return grupo?.cores.includes(e.cor);
+      })
+    : listaEtiquetas;
+
+  return (
+    <div className="flex h-full">
+      {/* Sidebar Secundaria - Filtros */}
+      <SidebarSecundaria largura="sm">
+        <CabecalhoSidebar
+          titulo="Etiquetas"
+          subtitulo={`${listaEtiquetas.length} etiquetas`}
+          acoes={
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={abrirCriar}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          }
+        />
+
+        <SecaoSidebar titulo="Filtrar por Cor">
+          <ItemSidebar
+            icone={<Tag className="h-4 w-4" />}
+            label="Todas as cores"
+            badge={listaEtiquetas.length}
+            ativo={corFiltro === null}
+            onClick={() => setCorFiltro(null)}
+          />
+          {GRUPOS_CORES.map((grupo) => {
+            const count = listaEtiquetas.filter((e) =>
+              grupo.cores.includes(e.cor)
+            ).length;
+            if (count === 0) return null;
+            return (
+              <ItemSidebar
+                key={grupo.nome}
+                icone={
+                  <div
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: grupo.cores[0] }}
+                  />
+                }
+                label={grupo.nome}
+                badge={count}
+                ativo={corFiltro === grupo.cores[0]}
+                onClick={() => setCorFiltro(grupo.cores[0])}
+              />
+            );
+          })}
+        </SecaoSidebar>
+      </SidebarSecundaria>
+
+      {/* Conteudo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <CabecalhoPagina
+          titulo="Etiquetas"
+          subtitulo="Organize seus contatos com etiquetas"
+          icone={<Tag className="h-5 w-5" />}
+          acoes={
             <Button onClick={abrirCriar}>
               <Plus className="mr-2 h-4 w-4" />
               Nova Etiqueta
             </Button>
           }
         />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {etiquetas.map((etiqueta) => (
-            <Card key={etiqueta.id}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="h-4 w-4 rounded-full"
-                    style={{ backgroundColor: etiqueta.cor }}
+
+        {/* Area de Conteudo */}
+        <div className="flex-1 overflow-auto p-6">
+          {carregando ? (
+            <EstadoCarregando texto="Carregando etiquetas..." />
+          ) : etiquetasFiltradas.length === 0 ? (
+            <EstadoVazio
+              titulo="Nenhuma etiqueta"
+              descricao="Crie sua primeira etiqueta para organizar contatos"
+              icone={<Tag className="h-16 w-16" />}
+              acao={{ label: 'Nova Etiqueta', onClick: abrirCriar }}
+            />
+          ) : (
+            <GridCards colunas={3}>
+              {etiquetasFiltradas.map((etiqueta) => (
+                <CardItem
+                  key={etiqueta.id}
+                  acoes={[
+                    {
+                      label: 'Editar',
+                      icone: <Pencil className="h-4 w-4" />,
+                      onClick: () => abrirEditar(etiqueta),
+                    },
+                    {
+                      label: 'Excluir',
+                      icone: <Trash2 className="h-4 w-4" />,
+                      onClick: () => excluirMutation.mutate(etiqueta.id),
+                      variante: 'destructive',
+                    },
+                  ]}
+                >
+                  <CardItemConteudo
+                    icone={
+                      <div
+                        className="h-5 w-5 rounded-full"
+                        style={{ backgroundColor: etiqueta.cor }}
+                      />
+                    }
+                    titulo={etiqueta.nome}
+                    subtitulo={etiqueta.cor}
                   />
-                  <span className="font-medium">{etiqueta.nome}</span>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => abrirEditar(etiqueta)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => excluirMutation.mutate(etiqueta.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardItem>
+              ))}
+            </GridCards>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Modal */}
       {modalAberto && (

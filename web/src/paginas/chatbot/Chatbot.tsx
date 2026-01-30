@@ -11,7 +11,9 @@ import {
   Pencil,
   Trash2,
   GitBranch,
-  MoreHorizontal,
+  FileEdit,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { chatbotServico } from '@/servicos/chatbot.servico';
 import { useToast } from '@/hooks';
@@ -21,14 +23,21 @@ import { Label } from '@/componentes/ui/label';
 import { Badge } from '@/componentes/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/componentes/ui/dropdown-menu';
-import { Carregando } from '@/componentes/comum/Carregando';
-import { ErroMensagem, Vazio } from '@/componentes/comum/ErroMensagem';
-import type { FluxoResumo, StatusFluxo } from '@/tipos';
+  SidebarSecundaria,
+  CabecalhoSidebar,
+  SecaoSidebar,
+  ItemSidebar,
+  BuscaSidebar,
+  CabecalhoPagina,
+  CardItem,
+  CardItemConteudo,
+  GridCards,
+  EstadoVazio,
+  EstadoCarregando,
+  EstadoErro,
+  EstadoBuscaVazia,
+} from '@/componentes/layout';
+import type { FluxoResumo, StatusFluxo, AtualizarFluxoDTO } from '@/tipos';
 
 // =============================================================================
 // Schemas
@@ -37,100 +46,27 @@ import type { FluxoResumo, StatusFluxo } from '@/tipos';
 const fluxoSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter no minimo 2 caracteres'),
   descricao: z.string().optional(),
-  gatilho: z.string().min(1, 'Gatilho obrigatorio'),
+  gatilhoTipo: z.enum(['PALAVRA_CHAVE', 'PRIMEIRA_MENSAGEM', 'HORARIO', 'ETIQUETA']),
+  gatilhoValor: z.string().optional(),
 });
 
 type FluxoForm = z.infer<typeof fluxoSchema>;
 
 // =============================================================================
-// Configuração de Status
+// Configuracao de Status
 // =============================================================================
 
-const statusConfig: Record<StatusFluxo, { label: string; variant: 'default' | 'secondary' | 'success' }> = {
-  RASCUNHO: { label: 'Rascunho', variant: 'secondary' },
-  ATIVO: { label: 'Ativo', variant: 'success' },
-  INATIVO: { label: 'Inativo', variant: 'default' },
+const statusConfig: Record<StatusFluxo, { label: string; variant: 'default' | 'secondary' | 'success'; icone: React.ReactNode }> = {
+  RASCUNHO: { label: 'Rascunho', variant: 'secondary', icone: <FileEdit className="h-4 w-4" /> },
+  ATIVO: { label: 'Ativo', variant: 'success', icone: <CheckCircle className="h-4 w-4" /> },
+  INATIVO: { label: 'Inativo', variant: 'default', icone: <XCircle className="h-4 w-4" /> },
 };
 
 // =============================================================================
-// Componente Card Fluxo
+// Tipos
 // =============================================================================
 
-interface CardFluxoProps {
-  fluxo: FluxoResumo;
-  onAtivar: (id: string) => void;
-  onDesativar: (id: string) => void;
-  onEditar: (fluxo: FluxoResumo) => void;
-  onExcluir: (id: string) => void;
-}
-
-function CardFluxo({ fluxo, onAtivar, onDesativar, onEditar, onExcluir }: CardFluxoProps) {
-  const config = statusConfig[fluxo.status];
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Bot className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">{fluxo.nome}</CardTitle>
-              <Badge variant={config.variant} className="mt-1">
-                {config.label}
-              </Badge>
-            </div>
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEditar(fluxo)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Editar
-              </DropdownMenuItem>
-              {fluxo.status !== 'ATIVO' && (
-                <DropdownMenuItem onClick={() => onAtivar(fluxo.id)}>
-                  <Play className="mr-2 h-4 w-4" />
-                  Ativar
-                </DropdownMenuItem>
-              )}
-              {fluxo.status === 'ATIVO' && (
-                <DropdownMenuItem onClick={() => onDesativar(fluxo.id)}>
-                  <Pause className="mr-2 h-4 w-4" />
-                  Desativar
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => onExcluir(fluxo.id)} className="text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Excluir
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardHeader>
-
-      <CardContent>
-        {fluxo.descricao && (
-          <p className="text-sm text-muted-foreground mb-4">{fluxo.descricao}</p>
-        )}
-
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <GitBranch className="h-4 w-4" />
-            {fluxo.totalNos} nos
-          </div>
-          <div>Gatilho: {fluxo.gatilho}</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+type FiltroStatus = 'todos' | StatusFluxo;
 
 // =============================================================================
 // Componente Principal
@@ -142,6 +78,8 @@ export default function Chatbot() {
 
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<FluxoResumo | null>(null);
+  const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos');
 
   // ---------------------------------------------------------------------------
   // Query
@@ -170,7 +108,7 @@ export default function Chatbot() {
   });
 
   const atualizarMutation = useMutation({
-    mutationFn: ({ id, dados }: { id: string; dados: FluxoForm }) =>
+    mutationFn: ({ id, dados }: { id: string; dados: AtualizarFluxoDTO }) =>
       chatbotServico.atualizarFluxo(id, dados),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatbot', 'fluxos'] });
@@ -212,7 +150,7 @@ export default function Chatbot() {
   // ---------------------------------------------------------------------------
   const form = useForm<FluxoForm>({
     resolver: zodResolver(fluxoSchema),
-    defaultValues: { nome: '', descricao: '', gatilho: '' },
+    defaultValues: { nome: '', descricao: '', gatilhoTipo: 'PALAVRA_CHAVE', gatilhoValor: '' },
   });
 
   // ---------------------------------------------------------------------------
@@ -220,13 +158,18 @@ export default function Chatbot() {
   // ---------------------------------------------------------------------------
   const abrirCriar = () => {
     setEditando(null);
-    form.reset({ nome: '', descricao: '', gatilho: '' });
+    form.reset({ nome: '', descricao: '', gatilhoTipo: 'PALAVRA_CHAVE', gatilhoValor: '' });
     setModalAberto(true);
   };
 
   const abrirEditar = (fluxo: FluxoResumo) => {
     setEditando(fluxo);
-    form.reset({ nome: fluxo.nome, descricao: fluxo.descricao || '', gatilho: fluxo.gatilho });
+    form.reset({
+      nome: fluxo.nome,
+      descricao: fluxo.descricao || '',
+      gatilhoTipo: fluxo.gatilho?.tipo || 'PALAVRA_CHAVE',
+      gatilhoValor: fluxo.gatilho?.valor || '',
+    });
     setModalAberto(true);
   };
 
@@ -236,71 +179,188 @@ export default function Chatbot() {
   };
 
   const handleSubmit = (dados: FluxoForm) => {
+    const payload = {
+      nome: dados.nome,
+      descricao: dados.descricao,
+      gatilho: {
+        tipo: dados.gatilhoTipo,
+        valor: dados.gatilhoValor,
+      },
+    };
+
     if (editando) {
-      atualizarMutation.mutate({ id: editando.id, dados });
+      atualizarMutation.mutate({ id: editando.id, dados: payload });
     } else {
-      criarMutation.mutate(dados);
+      criarMutation.mutate(payload);
     }
   };
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Erro
   // ---------------------------------------------------------------------------
   if (erro) {
     return (
-      <ErroMensagem
-        titulo="Erro ao carregar fluxos"
-        mensagem="Nao foi possivel carregar a lista"
-        onTentarNovamente={() => recarregar()}
-      />
+      <div className="flex h-full">
+        <div className="flex-1 flex items-center justify-center">
+          <EstadoErro
+            titulo="Erro ao carregar fluxos"
+            mensagem="Nao foi possivel carregar a lista"
+            onTentarNovamente={() => recarregar()}
+          />
+        </div>
+      </div>
     );
   }
 
-  return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Chatbot</h1>
-          <p className="text-muted-foreground">Gerencie seus fluxos de automacao</p>
-        </div>
-        <Button onClick={abrirCriar}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Fluxo
-        </Button>
-      </div>
+  const listaFluxos = fluxos || [];
 
-      {/* Lista */}
-      {carregando ? (
-        <div className="flex justify-center py-12">
-          <Carregando tamanho="lg" texto="Carregando fluxos..." />
-        </div>
-      ) : !fluxos || fluxos.length === 0 ? (
-        <Vazio
-          icone={<Bot className="h-16 w-16" />}
-          titulo="Nenhum fluxo"
-          descricao="Crie seu primeiro fluxo de automacao"
-          acao={
+  // Filtrar fluxos
+  const fluxosFiltrados = listaFluxos.filter((fluxo) => {
+    if (filtroStatus !== 'todos' && fluxo.status !== filtroStatus) return false;
+    if (busca && !fluxo.nome.toLowerCase().includes(busca.toLowerCase())) return false;
+    return true;
+  });
+
+  // Contadores
+  const contadores = {
+    todos: listaFluxos.length,
+    RASCUNHO: listaFluxos.filter((f) => f.status === 'RASCUNHO').length,
+    ATIVO: listaFluxos.filter((f) => f.status === 'ATIVO').length,
+    INATIVO: listaFluxos.filter((f) => f.status === 'INATIVO').length,
+  };
+
+  return (
+    <div className="flex h-full">
+      {/* Sidebar Secundaria - Filtros */}
+      <SidebarSecundaria largura="sm">
+        <CabecalhoSidebar
+          titulo="Chatbot"
+          subtitulo={`${listaFluxos.length} fluxos`}
+          acoes={
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={abrirCriar}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          }
+        />
+
+        <BuscaSidebar
+          valor={busca}
+          onChange={setBusca}
+          placeholder="Buscar fluxos..."
+        />
+
+        <SecaoSidebar titulo="Status">
+          <ItemSidebar
+            icone={<Bot className="h-4 w-4" />}
+            label="Todos"
+            badge={contadores.todos}
+            ativo={filtroStatus === 'todos'}
+            onClick={() => setFiltroStatus('todos')}
+          />
+          {(Object.keys(statusConfig) as StatusFluxo[]).map((status) => (
+            <ItemSidebar
+              key={status}
+              icone={statusConfig[status].icone}
+              label={statusConfig[status].label}
+              badge={contadores[status]}
+              ativo={filtroStatus === status}
+              onClick={() => setFiltroStatus(status)}
+            />
+          ))}
+        </SecaoSidebar>
+      </SidebarSecundaria>
+
+      {/* Conteudo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <CabecalhoPagina
+          titulo="Chatbot"
+          subtitulo="Gerencie seus fluxos de automacao"
+          icone={<Bot className="h-5 w-5" />}
+          acoes={
             <Button onClick={abrirCriar}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Fluxo
             </Button>
           }
         />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {fluxos.map((fluxo) => (
-            <CardFluxo
-              key={fluxo.id}
-              fluxo={fluxo}
-              onAtivar={(id) => ativarMutation.mutate(id)}
-              onDesativar={(id) => desativarMutation.mutate(id)}
-              onEditar={abrirEditar}
-              onExcluir={(id) => excluirMutation.mutate(id)}
-            />
-          ))}
+
+        {/* Area de Conteudo */}
+        <div className="flex-1 overflow-auto p-6">
+          {carregando ? (
+            <EstadoCarregando texto="Carregando fluxos..." />
+          ) : fluxosFiltrados.length === 0 ? (
+            busca ? (
+              <EstadoBuscaVazia
+                termoBusca={busca}
+                onLimpar={() => setBusca('')}
+              />
+            ) : (
+              <EstadoVazio
+                titulo="Nenhum fluxo"
+                descricao="Crie seu primeiro fluxo de automacao"
+                icone={<Bot className="h-16 w-16" />}
+                acao={{ label: 'Novo Fluxo', onClick: abrirCriar }}
+              />
+            )
+          ) : (
+            <GridCards colunas={3}>
+              {fluxosFiltrados.map((fluxo) => {
+                const config = statusConfig[fluxo.status] || statusConfig.RASCUNHO;
+
+                return (
+                  <CardItem
+                    key={fluxo.id}
+                    acoes={[
+                      {
+                        label: 'Editar',
+                        icone: <Pencil className="h-4 w-4" />,
+                        onClick: () => abrirEditar(fluxo),
+                      },
+                      ...(fluxo.status !== 'ATIVO'
+                        ? [{
+                            label: 'Ativar',
+                            icone: <Play className="h-4 w-4" />,
+                            onClick: () => ativarMutation.mutate(fluxo.id),
+                          }]
+                        : [{
+                            label: 'Desativar',
+                            icone: <Pause className="h-4 w-4" />,
+                            onClick: () => desativarMutation.mutate(fluxo.id),
+                          }]),
+                      {
+                        label: 'Excluir',
+                        icone: <Trash2 className="h-4 w-4" />,
+                        onClick: () => excluirMutation.mutate(fluxo.id),
+                        variante: 'destructive' as const,
+                      },
+                    ]}
+                  >
+                    <CardItemConteudo
+                      icone={<Bot className="h-5 w-5 text-primary" />}
+                      titulo={fluxo.nome}
+                      badge={
+                        <Badge variant={config.variant} className="text-xs">
+                          {config.label}
+                        </Badge>
+                      }
+                      subtitulo={fluxo.descricao}
+                      meta={
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <GitBranch className="h-3 w-3" />
+                            {fluxo.totalNos} nos
+                          </div>
+                          <span>Gatilho: {fluxo.gatilho?.valor || fluxo.gatilho?.tipo}</span>
+                        </div>
+                      }
+                    />
+                  </CardItem>
+                );
+              })}
+            </GridCards>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Modal */}
       {modalAberto && (
@@ -322,14 +382,28 @@ export default function Chatbot() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="gatilho">Gatilho *</Label>
+                  <Label htmlFor="gatilhoTipo">Tipo de Gatilho *</Label>
+                  <select
+                    id="gatilhoTipo"
+                    {...form.register('gatilhoTipo')}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="PALAVRA_CHAVE">Palavra-chave</option>
+                    <option value="PRIMEIRA_MENSAGEM">Primeira mensagem</option>
+                    <option value="HORARIO">Horário</option>
+                    <option value="ETIQUETA">Etiqueta</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gatilhoValor">Valor do Gatilho</Label>
                   <Input
-                    id="gatilho"
+                    id="gatilhoValor"
                     placeholder="Ex: #menu, oi, bom dia"
-                    {...form.register('gatilho')}
+                    {...form.register('gatilhoValor')}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Palavra-chave que inicia este fluxo
+                    Palavra-chave ou configuração que inicia este fluxo
                   </p>
                 </div>
 

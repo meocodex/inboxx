@@ -8,10 +8,12 @@ import {
   Smartphone,
   Wifi,
   WifiOff,
-  MoreHorizontal,
   RefreshCw,
   Trash2,
   PowerOff,
+  CheckCircle,
+  XCircle,
+  Clock,
 } from 'lucide-react';
 import { conexoesServico } from '@/servicos';
 import { useToast } from '@/hooks';
@@ -22,15 +24,20 @@ import { Label } from '@/componentes/ui/label';
 import { Badge } from '@/componentes/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/componentes/ui/dropdown-menu';
-import { Carregando } from '@/componentes/comum/Carregando';
-import { ErroMensagem, Vazio } from '@/componentes/comum/ErroMensagem';
+  SidebarSecundaria,
+  CabecalhoSidebar,
+  SecaoSidebar,
+  ItemSidebar,
+  SeparadorSidebar,
+  CabecalhoPagina,
+  CardItem,
+  CardItemConteudo,
+  GridCards,
+  EstadoVazio,
+  EstadoCarregando,
+  EstadoErro,
+} from '@/componentes/layout';
 import type {
-  CanalConexaoResumo,
   TipoCanalConexao,
   StatusCanalConexao,
 } from '@/tipos/conexao.tipos';
@@ -49,7 +56,7 @@ const conexaoSchema = z.object({
 type ConexaoForm = z.infer<typeof conexaoSchema>;
 
 // =============================================================================
-// Configurações
+// Configuracoes
 // =============================================================================
 
 const canalConfig: Record<TipoCanalConexao, { label: string; cor: string }> = {
@@ -58,99 +65,19 @@ const canalConfig: Record<TipoCanalConexao, { label: string; cor: string }> = {
   FACEBOOK: { label: 'Facebook', cor: '#1877F2' },
 };
 
-const statusConfig: Record<StatusCanalConexao, { label: string; variant: 'default' | 'success' | 'warning' | 'destructive' }> = {
-  CONECTADO: { label: 'Conectado', variant: 'success' },
-  DESCONECTADO: { label: 'Desconectado', variant: 'default' },
-  AGUARDANDO_QR: { label: 'Aguardando QR', variant: 'warning' },
-  ERRO: { label: 'Erro', variant: 'destructive' },
+const statusConfig: Record<StatusCanalConexao, { label: string; variant: 'default' | 'success' | 'warning' | 'destructive'; icone: React.ReactNode }> = {
+  CONECTADO: { label: 'Conectado', variant: 'success', icone: <CheckCircle className="h-4 w-4" /> },
+  DESCONECTADO: { label: 'Desconectado', variant: 'default', icone: <XCircle className="h-4 w-4" /> },
+  AGUARDANDO_QR: { label: 'Aguardando QR', variant: 'warning', icone: <Clock className="h-4 w-4" /> },
+  ERRO: { label: 'Erro', variant: 'destructive', icone: <XCircle className="h-4 w-4" /> },
 };
 
 // =============================================================================
-// Componente Card Conexão
+// Tipos
 // =============================================================================
 
-interface CardConexaoProps {
-  conexao: CanalConexaoResumo;
-  onTestar: (id: string) => void;
-  onDesativar: (id: string) => void;
-  onExcluir: (id: string) => void;
-}
-
-function CardConexao({ conexao, onTestar, onDesativar, onExcluir }: CardConexaoProps) {
-  const canal = canalConfig[conexao.canal];
-  const status = statusConfig[conexao.status];
-
-  return (
-    <Card className={!conexao.ativa ? 'opacity-60' : ''}>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="p-2 rounded-lg"
-              style={{ backgroundColor: `${canal.cor}20` }}
-            >
-              <Smartphone className="h-5 w-5" style={{ color: canal.cor }} />
-            </div>
-            <div>
-              <CardTitle className="text-lg">{conexao.nome}</CardTitle>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="outline">{canal.label}</Badge>
-                <Badge variant={status.variant}>{status.label}</Badge>
-              </div>
-            </div>
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onTestar(conexao.id)}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Testar Conexao
-              </DropdownMenuItem>
-              {conexao.status === 'CONECTADO' && (
-                <DropdownMenuItem onClick={() => onDesativar(conexao.id)}>
-                  <PowerOff className="mr-2 h-4 w-4 text-orange-500" />
-                  Desativar
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => onExcluir(conexao.id)} className="text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Excluir
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardHeader>
-
-      <CardContent>
-        <div className="space-y-3">
-          {/* Status Icon */}
-          <div className="flex items-center gap-2">
-            {conexao.status === 'CONECTADO' ? (
-              <Wifi className="h-4 w-4 text-green-500" />
-            ) : (
-              <WifiOff className="h-4 w-4 text-muted-foreground" />
-            )}
-            <span className="text-sm text-muted-foreground">
-              {conexao.telefone || 'Telefone não configurado'}
-            </span>
-          </div>
-
-          {/* Última Sincronização */}
-          {conexao.ultimaSincronizacao && (
-            <p className="text-xs text-muted-foreground">
-              Última sincronização: {formatarData(conexao.ultimaSincronizacao, 'dd/MM HH:mm')}
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+type FiltroStatus = 'todas' | StatusCanalConexao;
+type FiltroCanal = 'todos' | TipoCanalConexao;
 
 // =============================================================================
 // Componente Principal
@@ -161,6 +88,8 @@ export default function Conexoes() {
   const { erro: mostrarErro, sucesso: mostrarSucesso } = useToast();
 
   const [modalAberto, setModalAberto] = useState(false);
+  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todas');
+  const [filtroCanal, setFiltroCanal] = useState<FiltroCanal>('todos');
 
   // ---------------------------------------------------------------------------
   // Query
@@ -182,10 +111,10 @@ export default function Conexoes() {
     mutationFn: conexoesServico.criar,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conexoes'] });
-      mostrarSucesso('Conexão criada', 'A conexão foi criada com sucesso');
+      mostrarSucesso('Conexao criada', 'A conexao foi criada com sucesso');
       setModalAberto(false);
     },
-    onError: () => mostrarErro('Erro', 'Não foi possível criar a conexão'),
+    onError: () => mostrarErro('Erro', 'Nao foi possivel criar a conexao'),
   });
 
   const testarMutation = useMutation({
@@ -214,9 +143,9 @@ export default function Conexoes() {
     mutationFn: conexoesServico.excluir,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conexoes'] });
-      mostrarSucesso('Conexão excluída', 'A conexão foi removida');
+      mostrarSucesso('Conexao excluida', 'A conexao foi removida');
     },
-    onError: () => mostrarErro('Erro', 'Não foi possível excluir'),
+    onError: () => mostrarErro('Erro', 'Nao foi possivel excluir'),
   });
 
   // ---------------------------------------------------------------------------
@@ -242,69 +171,208 @@ export default function Conexoes() {
   };
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Erro
   // ---------------------------------------------------------------------------
   if (erro) {
     return (
-      <ErroMensagem
-        titulo="Erro ao carregar conexões"
-        mensagem="Não foi possível carregar a lista"
-        onTentarNovamente={() => recarregar()}
-      />
+      <div className="flex h-full">
+        <div className="flex-1 flex items-center justify-center">
+          <EstadoErro
+            titulo="Erro ao carregar conexoes"
+            mensagem="Nao foi possivel carregar a lista"
+            onTentarNovamente={() => recarregar()}
+          />
+        </div>
+      </div>
     );
   }
 
-  return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Conexões</h1>
-          <p className="text-muted-foreground">Gerencie suas conexões de canais</p>
-        </div>
-        <Button onClick={() => setModalAberto(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Conexão
-        </Button>
-      </div>
+  const listaConexoes = conexoes || [];
 
-      {/* Lista */}
-      {carregando ? (
-        <div className="flex justify-center py-12">
-          <Carregando tamanho="lg" texto="Carregando conexões..." />
-        </div>
-      ) : !conexoes || conexoes.length === 0 ? (
-        <Vazio
-          icone={<Smartphone className="h-16 w-16" />}
-          titulo="Nenhuma conexão"
-          descricao="Crie sua primeira conexão WhatsApp"
-          acao={
-            <Button onClick={() => setModalAberto(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Conexão
+  // Filtrar conexoes
+  const conexoesFiltradas = listaConexoes.filter((conexao) => {
+    if (filtroStatus !== 'todas' && conexao.status !== filtroStatus) return false;
+    if (filtroCanal !== 'todos' && conexao.canal !== filtroCanal) return false;
+    return true;
+  });
+
+  // Contadores
+  const contadores = {
+    todas: listaConexoes.length,
+    CONECTADO: listaConexoes.filter((c) => c.status === 'CONECTADO').length,
+    DESCONECTADO: listaConexoes.filter((c) => c.status === 'DESCONECTADO').length,
+    AGUARDANDO_QR: listaConexoes.filter((c) => c.status === 'AGUARDANDO_QR').length,
+    ERRO: listaConexoes.filter((c) => c.status === 'ERRO').length,
+  };
+
+  const contadoresCanais = {
+    todos: listaConexoes.length,
+    WHATSAPP: listaConexoes.filter((c) => c.canal === 'WHATSAPP').length,
+    INSTAGRAM: listaConexoes.filter((c) => c.canal === 'INSTAGRAM').length,
+    FACEBOOK: listaConexoes.filter((c) => c.canal === 'FACEBOOK').length,
+  };
+
+  return (
+    <div className="flex h-full">
+      {/* Sidebar Secundaria - Filtros */}
+      <SidebarSecundaria largura="sm">
+        <CabecalhoSidebar
+          titulo="Conexoes"
+          subtitulo={`${listaConexoes.length} conexoes`}
+          acoes={
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setModalAberto(true)}>
+              <Plus className="h-4 w-4" />
             </Button>
           }
         />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {conexoes.map((conexao) => (
-            <CardConexao
-              key={conexao.id}
-              conexao={conexao}
-              onTestar={(id) => testarMutation.mutate(id)}
-              onDesativar={(id) => desativarMutation.mutate(id)}
-              onExcluir={(id) => excluirMutation.mutate(id)}
+
+        <SecaoSidebar titulo="Status">
+          <ItemSidebar
+            icone={<Smartphone className="h-4 w-4" />}
+            label="Todas"
+            badge={contadores.todas}
+            ativo={filtroStatus === 'todas'}
+            onClick={() => setFiltroStatus('todas')}
+          />
+          {(Object.keys(statusConfig) as StatusCanalConexao[]).map((status) => (
+            <ItemSidebar
+              key={status}
+              icone={statusConfig[status].icone}
+              label={statusConfig[status].label}
+              badge={contadores[status]}
+              ativo={filtroStatus === status}
+              onClick={() => setFiltroStatus(status)}
             />
           ))}
-        </div>
-      )}
+        </SecaoSidebar>
 
-      {/* Modal Nova Conexão */}
+        <SeparadorSidebar />
+
+        <SecaoSidebar titulo="Canais">
+          <ItemSidebar
+            icone={<Smartphone className="h-4 w-4" />}
+            label="Todos os canais"
+            badge={contadoresCanais.todos}
+            ativo={filtroCanal === 'todos'}
+            onClick={() => setFiltroCanal('todos')}
+          />
+          {(Object.keys(canalConfig) as TipoCanalConexao[]).map((canal) => (
+            <ItemSidebar
+              key={canal}
+              icone={
+                <div
+                  className="h-3 w-3 rounded-full"
+                  style={{ backgroundColor: canalConfig[canal].cor }}
+                />
+              }
+              label={canalConfig[canal].label}
+              badge={contadoresCanais[canal]}
+              ativo={filtroCanal === canal}
+              onClick={() => setFiltroCanal(canal)}
+            />
+          ))}
+        </SecaoSidebar>
+      </SidebarSecundaria>
+
+      {/* Conteudo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <CabecalhoPagina
+          titulo="Conexoes"
+          subtitulo="Gerencie suas conexoes de canais"
+          icone={<Smartphone className="h-5 w-5" />}
+          acoes={
+            <Button onClick={() => setModalAberto(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Conexao
+            </Button>
+          }
+        />
+
+        {/* Area de Conteudo */}
+        <div className="flex-1 overflow-auto p-6">
+          {carregando ? (
+            <EstadoCarregando texto="Carregando conexoes..." />
+          ) : conexoesFiltradas.length === 0 ? (
+            <EstadoVazio
+              titulo="Nenhuma conexao"
+              descricao="Crie sua primeira conexao WhatsApp"
+              icone={<Smartphone className="h-16 w-16" />}
+              acao={{ label: 'Nova Conexao', onClick: () => setModalAberto(true) }}
+            />
+          ) : (
+            <GridCards colunas={3}>
+              {conexoesFiltradas.map((conexao) => {
+                const canal = canalConfig[conexao.canal];
+                const status = statusConfig[conexao.status];
+
+                return (
+                  <CardItem
+                    key={conexao.id}
+                    className={!conexao.ativa ? 'opacity-60' : ''}
+                    acoes={[
+                      {
+                        label: 'Testar Conexao',
+                        icone: <RefreshCw className="h-4 w-4" />,
+                        onClick: () => testarMutation.mutate(conexao.id),
+                      },
+                      ...(conexao.status === 'CONECTADO'
+                        ? [{
+                            label: 'Desativar',
+                            icone: <PowerOff className="h-4 w-4" />,
+                            onClick: () => desativarMutation.mutate(conexao.id),
+                          }]
+                        : []),
+                      {
+                        label: 'Excluir',
+                        icone: <Trash2 className="h-4 w-4" />,
+                        onClick: () => excluirMutation.mutate(conexao.id),
+                        variante: 'destructive' as const,
+                      },
+                    ]}
+                  >
+                    <CardItemConteudo
+                      icone={
+                        <Smartphone className="h-5 w-5" style={{ color: canal.cor }} />
+                      }
+                      titulo={conexao.nome}
+                      badge={
+                        <Badge variant={status.variant} className="text-xs">
+                          {status.label}
+                        </Badge>
+                      }
+                      subtitulo={canal.label}
+                      meta={
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            {conexao.status === 'CONECTADO' ? (
+                              <Wifi className="h-3 w-3 text-green-500" />
+                            ) : (
+                              <WifiOff className="h-3 w-3 text-muted-foreground" />
+                            )}
+                            <span>{conexao.telefone || 'Telefone nao configurado'}</span>
+                          </div>
+                          {conexao.ultimaSincronizacao && (
+                            <p className="text-xs">
+                              Sincronizado: {formatarData(conexao.ultimaSincronizacao, 'dd/MM HH:mm')}
+                            </p>
+                          )}
+                        </div>
+                      }
+                    />
+                  </CardItem>
+                );
+              })}
+            </GridCards>
+          )}
+        </div>
+      </div>
+
+      {/* Modal Nova Conexao */}
       {modalAberto && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <Card className="w-full max-w-md">
             <CardHeader>
-              <CardTitle>Nova Conexão</CardTitle>
+              <CardTitle>Nova Conexao</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -359,7 +427,6 @@ export default function Conexoes() {
           </Card>
         </div>
       )}
-
     </div>
   );
 }

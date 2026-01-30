@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -9,6 +10,10 @@ import {
   Clock,
   Send,
   AlertCircle,
+  FileEdit,
+  CalendarClock,
+  CheckCircle,
+  Ban,
 } from 'lucide-react';
 import { campanhasServico } from '@/servicos';
 import { useToast } from '@/hooks';
@@ -22,22 +27,39 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/componentes/ui/dropdown-menu';
-import { Carregando } from '@/componentes/comum/Carregando';
-import { ErroMensagem, Vazio } from '@/componentes/comum/ErroMensagem';
+import {
+  SidebarSecundaria,
+  CabecalhoSidebar,
+  SecaoSidebar,
+  ItemSidebar,
+  BuscaSidebar,
+  CabecalhoPagina,
+  GridCards,
+  EstadoVazio,
+  EstadoCarregando,
+  EstadoErro,
+  EstadoBuscaVazia,
+} from '@/componentes/layout';
 import type { Campanha, StatusCampanha } from '@/tipos';
 
 // =============================================================================
-// Configuração de Status
+// Configuracao de Status
 // =============================================================================
 
-const statusConfig: Record<StatusCampanha, { label: string; variant: 'default' | 'secondary' | 'success' | 'warning' | 'destructive' }> = {
-  RASCUNHO: { label: 'Rascunho', variant: 'secondary' },
-  AGENDADA: { label: 'Agendada', variant: 'default' },
-  EM_ANDAMENTO: { label: 'Em andamento', variant: 'warning' },
-  PAUSADA: { label: 'Pausada', variant: 'secondary' },
-  CONCLUIDA: { label: 'Concluida', variant: 'success' },
-  CANCELADA: { label: 'Cancelada', variant: 'destructive' },
+const statusConfig: Record<StatusCampanha, { label: string; variant: 'default' | 'secondary' | 'success' | 'warning' | 'destructive'; icone: React.ReactNode }> = {
+  RASCUNHO: { label: 'Rascunho', variant: 'secondary', icone: <FileEdit className="h-4 w-4" /> },
+  AGENDADA: { label: 'Agendada', variant: 'default', icone: <CalendarClock className="h-4 w-4" /> },
+  EM_ANDAMENTO: { label: 'Em andamento', variant: 'warning', icone: <Play className="h-4 w-4" /> },
+  PAUSADA: { label: 'Pausada', variant: 'secondary', icone: <Pause className="h-4 w-4" /> },
+  CONCLUIDA: { label: 'Concluida', variant: 'success', icone: <CheckCircle className="h-4 w-4" /> },
+  CANCELADA: { label: 'Cancelada', variant: 'destructive', icone: <Ban className="h-4 w-4" /> },
 };
+
+// =============================================================================
+// Tipos
+// =============================================================================
+
+type FiltroStatus = 'todas' | StatusCampanha;
 
 // =============================================================================
 // Componente Card Campanha
@@ -122,7 +144,7 @@ function CardCampanha({ campanha, onIniciar, onPausar, onCancelar }: CardCampanh
           </div>
         </div>
 
-        {/* Estatísticas */}
+        {/* Estatisticas */}
         <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 text-muted-foreground">
@@ -171,6 +193,8 @@ function CardCampanha({ campanha, onIniciar, onPausar, onCancelar }: CardCampanh
 export default function Campanhas() {
   const queryClient = useQueryClient();
   const { erro: mostrarErro, sucesso: mostrarSucesso } = useToast();
+  const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todas');
 
   // ---------------------------------------------------------------------------
   // Query
@@ -216,58 +240,124 @@ export default function Campanhas() {
   });
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Erro
   // ---------------------------------------------------------------------------
   if (erro) {
     return (
-      <ErroMensagem
-        titulo="Erro ao carregar campanhas"
-        mensagem="Nao foi possivel carregar a lista"
-        onTentarNovamente={() => recarregar()}
-      />
+      <div className="flex h-full">
+        <div className="flex-1 flex items-center justify-center">
+          <EstadoErro
+            titulo="Erro ao carregar campanhas"
+            mensagem="Nao foi possivel carregar a lista"
+            onTentarNovamente={() => recarregar()}
+          />
+        </div>
+      </div>
     );
   }
 
   const campanhas = campanhasData?.dados || [];
 
-  return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Campanhas</h1>
-          <p className="text-muted-foreground">Gerencie suas campanhas de envio em massa</p>
-        </div>
-        <Button disabled>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Campanha
-        </Button>
-      </div>
+  // Filtrar campanhas
+  const campanhasFiltradas = campanhas.filter((campanha) => {
+    if (filtroStatus !== 'todas' && campanha.status !== filtroStatus) return false;
+    if (busca && !campanha.nome.toLowerCase().includes(busca.toLowerCase())) return false;
+    return true;
+  });
 
-      {/* Lista */}
-      {carregando ? (
-        <div className="flex justify-center py-12">
-          <Carregando tamanho="lg" texto="Carregando campanhas..." />
-        </div>
-      ) : campanhas.length === 0 ? (
-        <Vazio
-          icone={<Megaphone className="h-16 w-16" />}
-          titulo="Nenhuma campanha"
-          descricao="Crie sua primeira campanha de envio"
+  // Contadores
+  const contadores = {
+    todas: campanhas.length,
+    RASCUNHO: campanhas.filter((c) => c.status === 'RASCUNHO').length,
+    AGENDADA: campanhas.filter((c) => c.status === 'AGENDADA').length,
+    EM_ANDAMENTO: campanhas.filter((c) => c.status === 'EM_ANDAMENTO').length,
+    PAUSADA: campanhas.filter((c) => c.status === 'PAUSADA').length,
+    CONCLUIDA: campanhas.filter((c) => c.status === 'CONCLUIDA').length,
+    CANCELADA: campanhas.filter((c) => c.status === 'CANCELADA').length,
+  };
+
+  return (
+    <div className="flex h-full">
+      {/* Sidebar Secundaria - Filtros */}
+      <SidebarSecundaria largura="sm">
+        <CabecalhoSidebar
+          titulo="Campanhas"
+          subtitulo={`${campanhas.length} campanhas`}
         />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {campanhas.map((campanha) => (
-            <CardCampanha
-              key={campanha.id}
-              campanha={campanha}
-              onIniciar={(id) => iniciarMutation.mutate(id)}
-              onPausar={(id) => pausarMutation.mutate(id)}
-              onCancelar={(id) => cancelarMutation.mutate(id)}
+
+        <BuscaSidebar
+          valor={busca}
+          onChange={setBusca}
+          placeholder="Buscar campanhas..."
+        />
+
+        <SecaoSidebar titulo="Status">
+          <ItemSidebar
+            icone={<Megaphone className="h-4 w-4" />}
+            label="Todas"
+            badge={contadores.todas}
+            ativo={filtroStatus === 'todas'}
+            onClick={() => setFiltroStatus('todas')}
+          />
+          {(Object.keys(statusConfig) as StatusCampanha[]).map((status) => (
+            <ItemSidebar
+              key={status}
+              icone={statusConfig[status].icone}
+              label={statusConfig[status].label}
+              badge={contadores[status]}
+              ativo={filtroStatus === status}
+              onClick={() => setFiltroStatus(status)}
             />
           ))}
+        </SecaoSidebar>
+      </SidebarSecundaria>
+
+      {/* Conteudo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <CabecalhoPagina
+          titulo="Campanhas"
+          subtitulo="Gerencie suas campanhas de envio em massa"
+          icone={<Megaphone className="h-5 w-5" />}
+          acoes={
+            <Button disabled>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Campanha
+            </Button>
+          }
+        />
+
+        {/* Area de Conteudo */}
+        <div className="flex-1 overflow-auto p-6">
+          {carregando ? (
+            <EstadoCarregando texto="Carregando campanhas..." />
+          ) : campanhasFiltradas.length === 0 ? (
+            busca ? (
+              <EstadoBuscaVazia
+                termoBusca={busca}
+                onLimpar={() => setBusca('')}
+              />
+            ) : (
+              <EstadoVazio
+                titulo="Nenhuma campanha"
+                descricao="Crie sua primeira campanha de envio"
+                icone={<Megaphone className="h-16 w-16" />}
+              />
+            )
+          ) : (
+            <GridCards colunas={3}>
+              {campanhasFiltradas.map((campanha) => (
+                <CardCampanha
+                  key={campanha.id}
+                  campanha={campanha}
+                  onIniciar={(id) => iniciarMutation.mutate(id)}
+                  onPausar={(id) => pausarMutation.mutate(id)}
+                  onCancelar={(id) => cancelarMutation.mutate(id)}
+                />
+              ))}
+            </GridCards>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

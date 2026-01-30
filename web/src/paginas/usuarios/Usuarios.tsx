@@ -8,10 +8,11 @@ import {
   UserPlus,
   Pencil,
   Trash2,
-  MoreHorizontal,
   Shield,
   UserCheck,
   UserX,
+  User,
+  UsersRound,
 } from 'lucide-react';
 import { usuariosServico, perfisServico, equipesServico } from '@/servicos';
 import { useToast } from '@/hooks';
@@ -20,16 +21,23 @@ import { Input } from '@/componentes/ui/input';
 import { Label } from '@/componentes/ui/label';
 import { Badge } from '@/componentes/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
-import { Avatar, AvatarFallback } from '@/componentes/ui/avatar';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/componentes/ui/dropdown-menu';
-import { Carregando } from '@/componentes/comum/Carregando';
-import { ErroMensagem, Vazio } from '@/componentes/comum/ErroMensagem';
-import type { Usuario } from '@/tipos';
+  SidebarSecundaria,
+  CabecalhoSidebar,
+  SecaoSidebar,
+  ItemSidebar,
+  SeparadorSidebar,
+  BuscaSidebar,
+  CabecalhoPagina,
+  CardItem,
+  CardItemAvatar,
+  GridCards,
+  EstadoVazio,
+  EstadoCarregando,
+  EstadoErro,
+  EstadoBuscaVazia,
+} from '@/componentes/layout';
+import type { Usuario, Perfil, Equipe } from '@/tipos';
 
 // =============================================================================
 // Schemas
@@ -46,84 +54,10 @@ const usuarioSchema = z.object({
 type UsuarioForm = z.infer<typeof usuarioSchema>;
 
 // =============================================================================
-// Componente Card Usuário
+// Tipos
 // =============================================================================
 
-interface CardUsuarioProps {
-  usuario: Usuario;
-  onEditar: (usuario: Usuario) => void;
-  onAlterarStatus: (id: string, ativo: boolean) => void;
-  onExcluir: (id: string) => void;
-}
-
-function CardUsuario({ usuario, onEditar, onAlterarStatus, onExcluir }: CardUsuarioProps) {
-  const iniciais = usuario.nome
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
-  return (
-    <Card className={!usuario.ativo ? 'opacity-60' : ''}>
-      <CardContent className="flex items-center gap-4 p-4">
-        <Avatar className="h-12 w-12">
-          <AvatarFallback>{iniciais}</AvatarFallback>
-        </Avatar>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-medium truncate">{usuario.nome}</p>
-            {!usuario.ativo && (
-              <Badge variant="secondary">Inativo</Badge>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground truncate">{usuario.email}</p>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline" className="text-xs">
-              <Shield className="mr-1 h-3 w-3" />
-              {usuario.perfil.nome}
-            </Badge>
-            {usuario.equipe && (
-              <Badge variant="outline" className="text-xs">
-                {usuario.equipe.nome}
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEditar(usuario)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Editar
-            </DropdownMenuItem>
-            {usuario.ativo ? (
-              <DropdownMenuItem onClick={() => onAlterarStatus(usuario.id, false)}>
-                <UserX className="mr-2 h-4 w-4 text-orange-500" />
-                Desativar
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onClick={() => onAlterarStatus(usuario.id, true)}>
-                <UserCheck className="mr-2 h-4 w-4 text-green-500" />
-                Ativar
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={() => onExcluir(usuario.id)} className="text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </CardContent>
-    </Card>
-  );
-}
+type FiltroUsuario = 'todos' | 'ativos' | 'inativos';
 
 // =============================================================================
 // Componente Principal
@@ -136,6 +70,9 @@ export default function Usuarios() {
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<Usuario | null>(null);
   const [busca, setBusca] = useState('');
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroUsuario>('todos');
+  const [perfilSelecionado, setPerfilSelecionado] = useState<string | null>(null);
+  const [equipeSelecionada, setEquipeSelecionada] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Queries
@@ -262,75 +199,216 @@ export default function Usuarios() {
   };
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Erro
   // ---------------------------------------------------------------------------
   if (erro) {
     return (
-      <ErroMensagem
-        titulo="Erro ao carregar usuarios"
-        mensagem="Nao foi possivel carregar a lista"
-        onTentarNovamente={() => recarregar()}
-      />
+      <div className="flex h-full">
+        <div className="flex-1 flex items-center justify-center">
+          <EstadoErro
+            titulo="Erro ao carregar usuarios"
+            mensagem="Nao foi possivel carregar a lista"
+            onTentarNovamente={() => recarregar()}
+          />
+        </div>
+      </div>
     );
   }
 
   const usuarios = usuariosData?.dados || [];
+  const listaPerfis: Perfil[] = perfis || [];
+  const listaEquipes: Equipe[] = equipes || [];
+
+  // Filtrar usuarios
+  const usuariosFiltrados = usuarios.filter((usuario) => {
+    if (filtroAtivo === 'ativos' && !usuario.ativo) return false;
+    if (filtroAtivo === 'inativos' && usuario.ativo) return false;
+    if (perfilSelecionado && usuario.perfilId !== perfilSelecionado) return false;
+    if (equipeSelecionada && usuario.equipeId !== equipeSelecionada) return false;
+    return true;
+  });
+
+  // Contadores
+  const contadores = {
+    todos: usuarios.length,
+    ativos: usuarios.filter((u) => u.ativo).length,
+    inativos: usuarios.filter((u) => !u.ativo).length,
+  };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Usuarios</h1>
-          <p className="text-muted-foreground">Gerencie os usuarios do sistema</p>
-        </div>
-        <Button onClick={abrirCriar}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Novo Usuario
-        </Button>
-      </div>
-
-      {/* Busca */}
-      <div className="max-w-sm">
-        <Input
-          placeholder="Buscar por nome ou email..."
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-        />
-      </div>
-
-      {/* Lista */}
-      {carregando ? (
-        <div className="flex justify-center py-12">
-          <Carregando tamanho="lg" texto="Carregando usuarios..." />
-        </div>
-      ) : usuarios.length === 0 ? (
-        <Vazio
-          icone={<Users className="h-16 w-16" />}
-          titulo="Nenhum usuario"
-          descricao={busca ? 'Nenhum usuario encontrado' : 'Crie o primeiro usuario'}
-          acao={
-            !busca && (
-              <Button onClick={abrirCriar}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Novo Usuario
-              </Button>
-            )
+    <div className="flex h-full">
+      {/* Sidebar Secundaria - Filtros */}
+      <SidebarSecundaria largura="sm">
+        <CabecalhoSidebar
+          titulo="Usuarios"
+          subtitulo={`${usuarios.length} usuarios`}
+          acoes={
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={abrirCriar}>
+              <UserPlus className="h-4 w-4" />
+            </Button>
           }
         />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {usuarios.map((usuario) => (
-            <CardUsuario
-              key={usuario.id}
-              usuario={usuario}
-              onEditar={abrirEditar}
-              onAlterarStatus={(id, ativo) => alterarStatusMutation.mutate({ id, ativo })}
-              onExcluir={(id) => excluirMutation.mutate(id)}
+
+        <BuscaSidebar
+          valor={busca}
+          onChange={setBusca}
+          placeholder="Buscar usuarios..."
+        />
+
+        <SecaoSidebar titulo="Status">
+          <ItemSidebar
+            icone={<Users className="h-4 w-4" />}
+            label="Todos"
+            badge={contadores.todos}
+            ativo={filtroAtivo === 'todos'}
+            onClick={() => setFiltroAtivo('todos')}
+          />
+          <ItemSidebar
+            icone={<UserCheck className="h-4 w-4" />}
+            label="Ativos"
+            badge={contadores.ativos}
+            ativo={filtroAtivo === 'ativos'}
+            onClick={() => setFiltroAtivo('ativos')}
+          />
+          <ItemSidebar
+            icone={<UserX className="h-4 w-4" />}
+            label="Inativos"
+            badge={contadores.inativos}
+            ativo={filtroAtivo === 'inativos'}
+            onClick={() => setFiltroAtivo('inativos')}
+          />
+        </SecaoSidebar>
+
+        <SeparadorSidebar />
+
+        <SecaoSidebar titulo="Perfis">
+          <ItemSidebar
+            icone={<Shield className="h-4 w-4" />}
+            label="Todos os perfis"
+            ativo={perfilSelecionado === null}
+            onClick={() => setPerfilSelecionado(null)}
+          />
+          {listaPerfis.map((perfil) => (
+            <ItemSidebar
+              key={perfil.id}
+              icone={<Shield className="h-4 w-4" />}
+              label={perfil.nome}
+              badge={usuarios.filter((u) => u.perfilId === perfil.id).length}
+              ativo={perfilSelecionado === perfil.id}
+              onClick={() => setPerfilSelecionado(perfil.id)}
             />
           ))}
+        </SecaoSidebar>
+
+        <SeparadorSidebar />
+
+        <SecaoSidebar titulo="Equipes">
+          <ItemSidebar
+            icone={<UsersRound className="h-4 w-4" />}
+            label="Todas as equipes"
+            ativo={equipeSelecionada === null}
+            onClick={() => setEquipeSelecionada(null)}
+          />
+          {listaEquipes.map((equipe) => (
+            <ItemSidebar
+              key={equipe.id}
+              icone={<UsersRound className="h-4 w-4" />}
+              label={equipe.nome}
+              badge={usuarios.filter((u) => u.equipeId === equipe.id).length}
+              ativo={equipeSelecionada === equipe.id}
+              onClick={() => setEquipeSelecionada(equipe.id)}
+            />
+          ))}
+        </SecaoSidebar>
+      </SidebarSecundaria>
+
+      {/* Conteudo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <CabecalhoPagina
+          titulo="Usuarios"
+          subtitulo="Gerencie os usuarios do sistema"
+          icone={<Users className="h-5 w-5" />}
+          acoes={
+            <Button onClick={abrirCriar}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Novo Usuario
+            </Button>
+          }
+        />
+
+        {/* Area de Conteudo */}
+        <div className="flex-1 overflow-auto p-6">
+          {carregando ? (
+            <EstadoCarregando texto="Carregando usuarios..." />
+          ) : usuariosFiltrados.length === 0 ? (
+            busca ? (
+              <EstadoBuscaVazia
+                termoBusca={busca}
+                onLimpar={() => setBusca('')}
+              />
+            ) : (
+              <EstadoVazio
+                titulo="Nenhum usuario"
+                descricao="Crie o primeiro usuario do sistema"
+                icone={<User className="h-16 w-16" />}
+                acao={{ label: 'Novo Usuario', onClick: abrirCriar }}
+              />
+            )
+          ) : (
+            <GridCards colunas={2}>
+              {usuariosFiltrados.map((usuario) => (
+                <CardItem
+                  key={usuario.id}
+                  className={!usuario.ativo ? 'opacity-60' : ''}
+                  acoes={[
+                    {
+                      label: 'Editar',
+                      icone: <Pencil className="h-4 w-4" />,
+                      onClick: () => abrirEditar(usuario),
+                    },
+                    usuario.ativo
+                      ? {
+                          label: 'Desativar',
+                          icone: <UserX className="h-4 w-4" />,
+                          onClick: () => alterarStatusMutation.mutate({ id: usuario.id, ativo: false }),
+                        }
+                      : {
+                          label: 'Ativar',
+                          icone: <UserCheck className="h-4 w-4" />,
+                          onClick: () => alterarStatusMutation.mutate({ id: usuario.id, ativo: true }),
+                        },
+                    {
+                      label: 'Excluir',
+                      icone: <Trash2 className="h-4 w-4" />,
+                      onClick: () => excluirMutation.mutate(usuario.id),
+                      variante: 'destructive',
+                    },
+                  ]}
+                >
+                  <CardItemAvatar
+                    nome={usuario.nome}
+                    subtitulo={usuario.email}
+                    badge={!usuario.ativo && <Badge variant="secondary">Inativo</Badge>}
+                    meta={
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          <Shield className="mr-1 h-3 w-3" />
+                          {usuario.perfil.nome}
+                        </Badge>
+                        {usuario.equipe && (
+                          <Badge variant="outline" className="text-xs">
+                            {usuario.equipe.nome}
+                          </Badge>
+                        )}
+                      </div>
+                    }
+                  />
+                </CardItem>
+              ))}
+            </GridCards>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Modal */}
       {modalAberto && (
@@ -366,7 +444,7 @@ export default function Usuarios() {
                     {...form.register('perfilId')}
                   >
                     <option value="">Selecione...</option>
-                    {perfis?.map((perfil) => (
+                    {listaPerfis.map((perfil) => (
                       <option key={perfil.id} value={perfil.id}>
                         {perfil.nome}
                       </option>
@@ -382,7 +460,7 @@ export default function Usuarios() {
                     {...form.register('equipeId')}
                   >
                     <option value="">Nenhuma</option>
-                    {equipes?.map((equipe) => (
+                    {listaEquipes.map((equipe) => (
                       <option key={equipe.id} value={equipe.id}>
                         {equipe.nome}
                       </option>

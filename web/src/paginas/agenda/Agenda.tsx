@@ -10,9 +10,12 @@ import {
   Phone,
   CheckSquare,
   Bell,
-  MoreHorizontal,
   Check,
   X,
+  Trash2,
+  CalendarDays,
+  CalendarCheck,
+  CalendarX,
 } from 'lucide-react';
 import { agendaServico } from '@/servicos/agenda.servico';
 import { useToast } from '@/hooks';
@@ -23,13 +26,19 @@ import { Label } from '@/componentes/ui/label';
 import { Badge } from '@/componentes/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/componentes/ui/dropdown-menu';
-import { Carregando } from '@/componentes/comum/Carregando';
-import { ErroMensagem, Vazio } from '@/componentes/comum/ErroMensagem';
+  SidebarSecundaria,
+  CabecalhoSidebar,
+  SecaoSidebar,
+  ItemSidebar,
+  SeparadorSidebar,
+  CabecalhoPagina,
+  CardItem,
+  CardItemConteudo,
+  ListaCards,
+  EstadoVazio,
+  EstadoCarregando,
+  EstadoErro,
+} from '@/componentes/layout';
 import type { EventoResumo, TipoEvento, StatusEvento } from '@/tipos';
 
 // =============================================================================
@@ -48,7 +57,7 @@ const eventoSchema = z.object({
 type EventoForm = z.infer<typeof eventoSchema>;
 
 // =============================================================================
-// Configurações
+// Configuracoes
 // =============================================================================
 
 const tipoConfig: Record<TipoEvento, { label: string; icon: React.ElementType; cor: string }> = {
@@ -59,79 +68,18 @@ const tipoConfig: Record<TipoEvento, { label: string; icon: React.ElementType; c
   OUTRO: { label: 'Outro', icon: Clock, cor: '#64748b' },
 };
 
-const statusConfig: Record<StatusEvento, { label: string; variant: 'default' | 'secondary' | 'success' | 'destructive' }> = {
-  AGENDADO: { label: 'Agendado', variant: 'default' },
-  CONCLUIDO: { label: 'Concluido', variant: 'success' },
-  CANCELADO: { label: 'Cancelado', variant: 'destructive' },
+const statusConfig: Record<StatusEvento, { label: string; variant: 'default' | 'secondary' | 'success' | 'destructive'; icone: React.ReactNode }> = {
+  AGENDADO: { label: 'Agendado', variant: 'default', icone: <CalendarDays className="h-4 w-4" /> },
+  CONCLUIDO: { label: 'Concluido', variant: 'success', icone: <CalendarCheck className="h-4 w-4" /> },
+  CANCELADO: { label: 'Cancelado', variant: 'destructive', icone: <CalendarX className="h-4 w-4" /> },
 };
 
 // =============================================================================
-// Componente Card Evento
+// Tipos
 // =============================================================================
 
-interface CardEventoProps {
-  evento: EventoResumo;
-  onConcluir: (id: string) => void;
-  onCancelar: (id: string) => void;
-  onExcluir: (id: string) => void;
-}
-
-function CardEvento({ evento, onConcluir, onCancelar, onExcluir }: CardEventoProps) {
-  const tipo = tipoConfig[evento.tipo];
-  const status = statusConfig[evento.status];
-  const Icon = tipo.icon;
-
-  return (
-    <Card className={evento.status === 'CANCELADO' ? 'opacity-60' : ''}>
-      <CardContent className="flex items-center gap-4 p-4">
-        <div
-          className="p-2 rounded-lg"
-          style={{ backgroundColor: `${tipo.cor}20` }}
-        >
-          <Icon className="h-5 w-5" style={{ color: tipo.cor }} />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-medium truncate">{evento.titulo}</p>
-            <Badge variant={status.variant} className="text-xs">
-              {status.label}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {evento.diaInteiro
-              ? formatarData(evento.dataInicio, 'dd/MM/yyyy')
-              : formatarData(evento.dataInicio, 'dd/MM HH:mm')}
-            {evento.contatoNome && ` • ${evento.contatoNome}`}
-          </p>
-        </div>
-
-        {evento.status === 'AGENDADO' && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onConcluir(evento.id)}>
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-                Concluir
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onCancelar(evento.id)}>
-                <X className="mr-2 h-4 w-4 text-orange-500" />
-                Cancelar
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onExcluir(evento.id)} className="text-destructive">
-                Excluir
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+type FiltroStatus = 'todos' | StatusEvento;
+type FiltroTipo = 'todos' | TipoEvento;
 
 // =============================================================================
 // Componente Principal
@@ -142,6 +90,8 @@ export default function Agenda() {
   const { erro: mostrarErro, sucesso: mostrarSucesso } = useToast();
 
   const [modalAberto, setModalAberto] = useState(false);
+  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos');
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('todos');
 
   // ---------------------------------------------------------------------------
   // Query
@@ -216,20 +166,33 @@ export default function Agenda() {
   };
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Erro
   // ---------------------------------------------------------------------------
   if (erro) {
     return (
-      <ErroMensagem
-        titulo="Erro ao carregar agenda"
-        mensagem="Nao foi possivel carregar os eventos"
-        onTentarNovamente={() => recarregar()}
-      />
+      <div className="flex h-full">
+        <div className="flex-1 flex items-center justify-center">
+          <EstadoErro
+            titulo="Erro ao carregar agenda"
+            mensagem="Nao foi possivel carregar os eventos"
+            onTentarNovamente={() => recarregar()}
+          />
+        </div>
+      </div>
     );
   }
 
+  const listaEventos = eventos || [];
+
+  // Filtrar eventos
+  const eventosFiltrados = listaEventos.filter((evento) => {
+    if (filtroStatus !== 'todos' && evento.status !== filtroStatus) return false;
+    if (filtroTipo !== 'todos' && evento.tipo !== filtroTipo) return false;
+    return true;
+  });
+
   // Agrupar eventos por data
-  const eventosAgrupados = (eventos || []).reduce((acc, evento) => {
+  const eventosAgrupados = eventosFiltrados.reduce((acc, evento) => {
     const data = evento.dataInicio.split('T')[0];
     if (!acc[data]) acc[data] = [];
     acc[data].push(evento);
@@ -238,59 +201,173 @@ export default function Agenda() {
 
   const datasOrdenadas = Object.keys(eventosAgrupados).sort();
 
-  return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Agenda</h1>
-          <p className="text-muted-foreground">Gerencie seus compromissos e tarefas</p>
-        </div>
-        <Button onClick={() => setModalAberto(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Evento
-        </Button>
-      </div>
+  // Contadores
+  const contadores = {
+    todos: listaEventos.length,
+    AGENDADO: listaEventos.filter((e) => e.status === 'AGENDADO').length,
+    CONCLUIDO: listaEventos.filter((e) => e.status === 'CONCLUIDO').length,
+    CANCELADO: listaEventos.filter((e) => e.status === 'CANCELADO').length,
+  };
 
-      {/* Lista */}
-      {carregando ? (
-        <div className="flex justify-center py-12">
-          <Carregando tamanho="lg" texto="Carregando eventos..." />
-        </div>
-      ) : !eventos || eventos.length === 0 ? (
-        <Vazio
-          icone={<Calendar className="h-16 w-16" />}
-          titulo="Nenhum evento"
-          descricao="Crie seu primeiro evento ou tarefa"
-          acao={
+  const contadoresTipo = {
+    todos: listaEventos.length,
+    REUNIAO: listaEventos.filter((e) => e.tipo === 'REUNIAO').length,
+    LIGACAO: listaEventos.filter((e) => e.tipo === 'LIGACAO').length,
+    TAREFA: listaEventos.filter((e) => e.tipo === 'TAREFA').length,
+    LEMBRETE: listaEventos.filter((e) => e.tipo === 'LEMBRETE').length,
+    OUTRO: listaEventos.filter((e) => e.tipo === 'OUTRO').length,
+  };
+
+  return (
+    <div className="flex h-full">
+      {/* Sidebar Secundaria - Filtros */}
+      <SidebarSecundaria largura="sm">
+        <CabecalhoSidebar
+          titulo="Agenda"
+          subtitulo={`${listaEventos.length} eventos`}
+          acoes={
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setModalAberto(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          }
+        />
+
+        <SecaoSidebar titulo="Status">
+          <ItemSidebar
+            icone={<Calendar className="h-4 w-4" />}
+            label="Todos"
+            badge={contadores.todos}
+            ativo={filtroStatus === 'todos'}
+            onClick={() => setFiltroStatus('todos')}
+          />
+          {(Object.keys(statusConfig) as StatusEvento[]).map((status) => (
+            <ItemSidebar
+              key={status}
+              icone={statusConfig[status].icone}
+              label={statusConfig[status].label}
+              badge={contadores[status]}
+              ativo={filtroStatus === status}
+              onClick={() => setFiltroStatus(status)}
+            />
+          ))}
+        </SecaoSidebar>
+
+        <SeparadorSidebar />
+
+        <SecaoSidebar titulo="Tipo">
+          <ItemSidebar
+            icone={<Calendar className="h-4 w-4" />}
+            label="Todos os tipos"
+            badge={contadoresTipo.todos}
+            ativo={filtroTipo === 'todos'}
+            onClick={() => setFiltroTipo('todos')}
+          />
+          {(Object.keys(tipoConfig) as TipoEvento[]).map((tipo) => {
+            const TipoIcon = tipoConfig[tipo].icon;
+            return (
+              <ItemSidebar
+                key={tipo}
+                icone={<TipoIcon className="h-4 w-4" style={{ color: tipoConfig[tipo].cor }} />}
+                label={tipoConfig[tipo].label}
+                badge={contadoresTipo[tipo]}
+                ativo={filtroTipo === tipo}
+                onClick={() => setFiltroTipo(tipo)}
+              />
+            );
+          })}
+        </SecaoSidebar>
+      </SidebarSecundaria>
+
+      {/* Conteudo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <CabecalhoPagina
+          titulo="Agenda"
+          subtitulo="Gerencie seus compromissos e tarefas"
+          icone={<Calendar className="h-5 w-5" />}
+          acoes={
             <Button onClick={() => setModalAberto(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Evento
             </Button>
           }
         />
-      ) : (
-        <div className="space-y-6">
-          {datasOrdenadas.map((data) => (
-            <div key={data}>
-              <h3 className="font-medium text-muted-foreground mb-3">
-                {formatarData(data, "EEEE, dd 'de' MMMM")}
-              </h3>
-              <div className="space-y-2">
-                {eventosAgrupados[data].map((evento) => (
-                  <CardEvento
-                    key={evento.id}
-                    evento={evento}
-                    onConcluir={(id) => concluirMutation.mutate(id)}
-                    onCancelar={(id) => cancelarMutation.mutate(id)}
-                    onExcluir={(id) => excluirMutation.mutate(id)}
-                  />
-                ))}
-              </div>
+
+        {/* Area de Conteudo */}
+        <div className="flex-1 overflow-auto p-6">
+          {carregando ? (
+            <EstadoCarregando texto="Carregando eventos..." />
+          ) : eventosFiltrados.length === 0 ? (
+            <EstadoVazio
+              titulo="Nenhum evento"
+              descricao="Crie seu primeiro evento ou tarefa"
+              icone={<Calendar className="h-16 w-16" />}
+              acao={{ label: 'Novo Evento', onClick: () => setModalAberto(true) }}
+            />
+          ) : (
+            <div className="space-y-6">
+              {datasOrdenadas.map((data) => (
+                <div key={data}>
+                  <h3 className="font-medium text-muted-foreground mb-3">
+                    {formatarData(data, "EEEE, dd 'de' MMMM")}
+                  </h3>
+                  <ListaCards>
+                    {eventosAgrupados[data].map((evento) => {
+                      const tipo = tipoConfig[evento.tipo];
+                      const status = statusConfig[evento.status];
+                      const Icon = tipo.icon;
+
+                      return (
+                        <CardItem
+                          key={evento.id}
+                          className={evento.status === 'CANCELADO' ? 'opacity-60' : ''}
+                          acoes={
+                            evento.status === 'AGENDADO'
+                              ? [
+                                  {
+                                    label: 'Concluir',
+                                    icone: <Check className="h-4 w-4" />,
+                                    onClick: () => concluirMutation.mutate(evento.id),
+                                  },
+                                  {
+                                    label: 'Cancelar',
+                                    icone: <X className="h-4 w-4" />,
+                                    onClick: () => cancelarMutation.mutate(evento.id),
+                                  },
+                                  {
+                                    label: 'Excluir',
+                                    icone: <Trash2 className="h-4 w-4" />,
+                                    onClick: () => excluirMutation.mutate(evento.id),
+                                    variante: 'destructive',
+                                  },
+                                ]
+                              : undefined
+                          }
+                        >
+                          <CardItemConteudo
+                            icone={<Icon className="h-5 w-5" style={{ color: tipo.cor }} />}
+                            titulo={evento.titulo}
+                            badge={
+                              <Badge variant={status.variant} className="text-xs">
+                                {status.label}
+                              </Badge>
+                            }
+                            subtitulo={
+                              evento.diaInteiro
+                                ? formatarData(evento.dataInicio, 'dd/MM/yyyy')
+                                : formatarData(evento.dataInicio, 'dd/MM HH:mm')
+                            }
+                            meta={evento.contatoNome && <span>{evento.contatoNome}</span>}
+                          />
+                        </CardItem>
+                      );
+                    })}
+                  </ListaCards>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      )}
+      </div>
 
       {/* Modal */}
       {modalAberto && (

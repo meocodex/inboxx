@@ -4,33 +4,42 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Search,
   Plus,
-  MoreHorizontal,
   Phone,
   Mail,
   User,
   Pencil,
   Trash2,
+  Users,
+  Tag,
+  Star,
+  Clock,
 } from 'lucide-react';
 import { contatosServico, etiquetasServico } from '@/servicos';
 import { useToast } from '@/hooks';
-import { formatarTelefone, formatarData } from '@/utilitarios/formatadores';
+import { formatarTelefone } from '@/utilitarios/formatadores';
 import { Button } from '@/componentes/ui/button';
 import { Input } from '@/componentes/ui/input';
 import { Label } from '@/componentes/ui/label';
 import { Badge } from '@/componentes/ui/badge';
-import { Avatar, AvatarFallback } from '@/componentes/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/componentes/ui/dropdown-menu';
-import { Carregando } from '@/componentes/comum/Carregando';
-import { ErroMensagem, Vazio } from '@/componentes/comum/ErroMensagem';
-import type { Contato } from '@/tipos';
+  SidebarSecundaria,
+  CabecalhoSidebar,
+  SecaoSidebar,
+  ItemSidebar,
+  SeparadorSidebar,
+  BuscaSidebar,
+  CabecalhoPagina,
+  CardItem,
+  CardItemAvatar,
+  GridCards,
+  EstadoVazio,
+  EstadoCarregando,
+  EstadoErro,
+  EstadoBuscaVazia,
+} from '@/componentes/layout';
+import type { Contato, Etiqueta } from '@/tipos';
 
 // =============================================================================
 // Schema
@@ -45,94 +54,10 @@ const contatoSchema = z.object({
 type ContatoForm = z.infer<typeof contatoSchema>;
 
 // =============================================================================
-// Componente Card de Contato
+// Tipos
 // =============================================================================
 
-interface CardContatoProps {
-  contato: Contato;
-  onEditar: (contato: Contato) => void;
-  onExcluir: (id: string) => void;
-}
-
-function CardContato({ contato, onEditar, onExcluir }: CardContatoProps) {
-  const iniciais = contato.nome
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
-  return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12">
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {iniciais}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="font-semibold">{contato.nome}</h3>
-              {contato.telefone && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Phone className="h-3 w-3" />
-                  {formatarTelefone(contato.telefone)}
-                </p>
-              )}
-              {contato.email && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Mail className="h-3 w-3" />
-                  {contato.email}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEditar(contato)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Editar
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onExcluir(contato.id)}
-                className="text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Excluir
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Etiquetas */}
-        {contato.etiquetas.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-3">
-            {contato.etiquetas.map((etiqueta) => (
-              <Badge
-                key={etiqueta.id}
-                variant="outline"
-                style={{ borderColor: etiqueta.cor, color: etiqueta.cor }}
-              >
-                {etiqueta.nome}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        <p className="text-xs text-muted-foreground mt-3">
-          Criado em {formatarData(contato.criadoEm)}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
+type FiltroContato = 'todos' | 'ativos' | 'inativos' | 'favoritos' | 'recentes';
 
 // =============================================================================
 // Componente Principal
@@ -142,6 +67,8 @@ export default function Contatos() {
   const queryClient = useQueryClient();
   const { erro: mostrarErro, sucesso: mostrarSucesso } = useToast();
   const [busca, setBusca] = useState('');
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroContato>('todos');
+  const [etiquetaSelecionada, setEtiquetaSelecionada] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [contatoEditando, setContatoEditando] = useState<Contato | null>(null);
 
@@ -158,8 +85,7 @@ export default function Contatos() {
     queryFn: () => contatosServico.listar({ busca: busca || undefined, limite: 50 }),
   });
 
-  // Etiquetas (para uso futuro)
-  useQuery({
+  const { data: etiquetasData } = useQuery({
     queryKey: ['etiquetas'],
     queryFn: etiquetasServico.listar,
   });
@@ -239,80 +165,223 @@ export default function Contatos() {
   };
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Erro
   // ---------------------------------------------------------------------------
   if (erro) {
     return (
-      <ErroMensagem
-        titulo="Erro ao carregar contatos"
-        mensagem="Nao foi possivel carregar a lista de contatos"
-        onTentarNovamente={() => recarregar()}
-      />
+      <div className="flex h-full">
+        <div className="flex-1 flex items-center justify-center">
+          <EstadoErro
+            titulo="Erro ao carregar contatos"
+            mensagem="Nao foi possivel carregar a lista de contatos"
+            onTentarNovamente={() => recarregar()}
+          />
+        </div>
+      </div>
     );
   }
 
   const contatos = contatosData?.dados || [];
+  const etiquetas: Etiqueta[] = etiquetasData || [];
+
+  // Filtrar contatos
+  const contatosFiltrados = contatos.filter((contato) => {
+    if (etiquetaSelecionada) {
+      return contato.etiquetas.some((e) => e.id === etiquetaSelecionada);
+    }
+    return true;
+  });
+
+  // Contadores
+  const contadores = {
+    todos: contatos.length,
+    ativos: contatos.filter((c) => c.ativo).length,
+    inativos: contatos.filter((c) => !c.ativo).length,
+    favoritos: 0,
+    recentes: contatos.slice(0, 10).length,
+  };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Contatos</h1>
-          <p className="text-muted-foreground">Gerencie seus contatos</p>
-        </div>
-        <Button onClick={handleNovo}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Contato
-        </Button>
-      </div>
-
-      {/* Busca */}
-      <div className="flex gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome, telefone ou email..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
-
-      {/* Lista */}
-      {carregando ? (
-        <div className="flex justify-center py-12">
-          <Carregando tamanho="lg" texto="Carregando contatos..." />
-        </div>
-      ) : contatos.length === 0 ? (
-        <Vazio
-          icone={<User className="h-16 w-16" />}
-          titulo={busca ? 'Nenhum contato encontrado' : 'Nenhum contato'}
-          descricao={busca ? 'Tente outra busca' : 'Crie seu primeiro contato'}
-          acao={
-            !busca && (
-              <Button onClick={handleNovo}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Contato
-              </Button>
-            )
+    <div className="flex h-full">
+      {/* Sidebar Secundaria - Filtros */}
+      <SidebarSecundaria largura="sm">
+        <CabecalhoSidebar
+          titulo="Contatos"
+          subtitulo={`${contatos.length} contatos`}
+          acoes={
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleNovo}>
+              <Plus className="h-4 w-4" />
+            </Button>
           }
         />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {contatos.map((contato) => (
-            <CardContato
-              key={contato.id}
-              contato={contato}
-              onEditar={handleEditar}
-              onExcluir={(id) => excluirMutation.mutate(id)}
+
+        <BuscaSidebar
+          valor={busca}
+          onChange={setBusca}
+          placeholder="Buscar contatos..."
+        />
+
+        <SecaoSidebar titulo="Filtros">
+          <ItemSidebar
+            icone={<Users className="h-4 w-4" />}
+            label="Todos"
+            badge={contadores.todos}
+            ativo={filtroAtivo === 'todos'}
+            onClick={() => setFiltroAtivo('todos')}
+          />
+          <ItemSidebar
+            icone={<User className="h-4 w-4" />}
+            label="Ativos"
+            badge={contadores.ativos}
+            ativo={filtroAtivo === 'ativos'}
+            onClick={() => setFiltroAtivo('ativos')}
+          />
+          <ItemSidebar
+            icone={<User className="h-4 w-4" />}
+            label="Inativos"
+            badge={contadores.inativos}
+            ativo={filtroAtivo === 'inativos'}
+            onClick={() => setFiltroAtivo('inativos')}
+          />
+          <ItemSidebar
+            icone={<Star className="h-4 w-4" />}
+            label="Favoritos"
+            badge={contadores.favoritos}
+            ativo={filtroAtivo === 'favoritos'}
+            onClick={() => setFiltroAtivo('favoritos')}
+          />
+          <ItemSidebar
+            icone={<Clock className="h-4 w-4" />}
+            label="Recentes"
+            badge={contadores.recentes}
+            ativo={filtroAtivo === 'recentes'}
+            onClick={() => setFiltroAtivo('recentes')}
+          />
+        </SecaoSidebar>
+
+        <SeparadorSidebar />
+
+        <SecaoSidebar titulo="Etiquetas">
+          <ItemSidebar
+            icone={<Tag className="h-4 w-4" />}
+            label="Todas as etiquetas"
+            ativo={etiquetaSelecionada === null}
+            onClick={() => setEtiquetaSelecionada(null)}
+          />
+          {etiquetas.map((etiqueta) => (
+            <ItemSidebar
+              key={etiqueta.id}
+              icone={
+                <div
+                  className="h-3 w-3 rounded-full"
+                  style={{ backgroundColor: etiqueta.cor }}
+                />
+              }
+              label={etiqueta.nome}
+              ativo={etiquetaSelecionada === etiqueta.id}
+              onClick={() => setEtiquetaSelecionada(etiqueta.id)}
             />
           ))}
-        </div>
-      )}
+        </SecaoSidebar>
+      </SidebarSecundaria>
 
-      {/* Form Modal (simplificado como card) */}
+      {/* Conteudo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <CabecalhoPagina
+          titulo="Contatos"
+          subtitulo="Gerencie seus contatos"
+          icone={<Users className="h-5 w-5" />}
+          acoes={
+            <Button onClick={handleNovo}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Contato
+            </Button>
+          }
+        />
+
+        {/* Area de Conteudo */}
+        <div className="flex-1 overflow-auto p-6">
+          {carregando ? (
+            <EstadoCarregando texto="Carregando contatos..." />
+          ) : contatosFiltrados.length === 0 ? (
+            busca ? (
+              <EstadoBuscaVazia
+                termoBusca={busca}
+                onLimpar={() => setBusca('')}
+              />
+            ) : (
+              <EstadoVazio
+                titulo="Nenhum contato"
+                descricao="Crie seu primeiro contato para comecar"
+                icone={<User className="h-16 w-16" />}
+                acao={{ label: 'Novo Contato', onClick: handleNovo }}
+              />
+            )
+          ) : (
+            <GridCards colunas={3}>
+              {contatosFiltrados.map((contato) => (
+                <CardItem
+                  key={contato.id}
+                  acoes={[
+                    {
+                      label: 'Editar',
+                      icone: <Pencil className="h-4 w-4" />,
+                      onClick: () => handleEditar(contato),
+                    },
+                    {
+                      label: 'Excluir',
+                      icone: <Trash2 className="h-4 w-4" />,
+                      onClick: () => excluirMutation.mutate(contato.id),
+                      variante: 'destructive',
+                    },
+                  ]}
+                >
+                  <CardItemAvatar
+                    nome={contato.nome}
+                    subtitulo={
+                      contato.telefone
+                        ? formatarTelefone(contato.telefone)
+                        : contato.email || undefined
+                    }
+                    meta={
+                      <div className="flex flex-col gap-2">
+                        {contato.telefone && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            <span>{formatarTelefone(contato.telefone)}</span>
+                          </div>
+                        )}
+                        {contato.email && (
+                          <div className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            <span>{contato.email}</span>
+                          </div>
+                        )}
+                        {contato.etiquetas.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {contato.etiquetas.map((etiqueta) => (
+                              <Badge
+                                key={etiqueta.id}
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0"
+                                style={{ borderColor: etiqueta.cor, color: etiqueta.cor }}
+                              >
+                                {etiqueta.nome}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    }
+                  />
+                </CardItem>
+              ))}
+            </GridCards>
+          )}
+        </div>
+      </div>
+
+      {/* Form Modal */}
       {(modalAberto || contatoEditando) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <Card className="w-full max-w-md">

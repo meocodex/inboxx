@@ -159,16 +159,29 @@ export async function receberWebhookUaiZap(
     return reply.status(404).send({ erro: 'Conexao nao encontrada' });
   }
 
-  // Validar assinatura HMAC (se configurado)
+  // Validar assinatura HMAC (OBRIGATÓRIO)
   const assinatura = request.headers['x-signature'] as string;
   const apiKey = (conexao.configuracoes as { apiKey?: string } | null)?.apiKey;
 
-  if (assinatura && apiKey) {
-    const rawBody = JSON.stringify(request.body);
-    if (!validarAssinaturaUaiZap(rawBody, assinatura, apiKey)) {
-      logger.warn({ instanciaId }, 'Webhook UaiZap: Assinatura invalida');
-      return reply.status(401).send({ erro: 'Assinatura invalida' });
-    }
+  if (!assinatura) {
+    logger.warn({ instanciaId, ip: request.ip }, 'Webhook UaiZap: Assinatura ausente');
+    return reply.status(401).send({ erro: 'Assinatura HMAC obrigatoria' });
+  }
+
+  if (!apiKey) {
+    logger.error({ instanciaId }, 'Webhook UaiZap: apiKey nao configurada');
+    return reply.status(500).send({ erro: 'Conexao mal configurada' });
+  }
+
+  const rawBody = JSON.stringify(request.body);
+  if (!validarAssinaturaUaiZap(rawBody, assinatura, apiKey)) {
+    logger.warn({
+      instanciaId,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
+      assinaturaFornecida: assinatura?.substring(0, 8) + '...',
+    }, 'Tentativa de webhook não autorizado detectada');
+    return reply.status(401).send({ erro: 'Assinatura invalida' });
   }
 
   const payload = request.body as UaiZapWebhookPayload;

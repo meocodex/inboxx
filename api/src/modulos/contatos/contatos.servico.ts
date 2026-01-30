@@ -4,6 +4,8 @@ import { contatos, contatosEtiquetas, etiquetas, conversas, cartoesKanban, compr
 import { ErroNaoEncontrado, ErroValidacao } from '../../compartilhado/erros/index.js';
 import { buscar, meilisearchDisponivel, INDICES } from '../../infraestrutura/busca/index.js';
 import { enviarJob } from '../../infraestrutura/filas/index.js';
+import { cacheContatos } from '../../infraestrutura/cache/redis.servico.js';
+import { logger } from '../../compartilhado/utilitarios/logger.js';
 import type { ContatoDocumento } from '../../infraestrutura/busca/index.js';
 import type {
   CriarContatoDTO,
@@ -11,6 +13,19 @@ import type {
   ListarContatosQuery,
   ImportarContatosDTO,
 } from './contatos.schema.js';
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+async function invalidarCacheContato(contatoId: string): Promise<void> {
+  try {
+    await cacheContatos.delete(`obter:${contatoId}`);
+    logger.debug({ contatoId }, 'Cache de contato invalidado');
+  } catch (erro) {
+    logger.error({ erro, contatoId }, 'Erro ao invalidar cache de contato');
+  }
+}
 
 // =============================================================================
 // Servico de Contatos
@@ -142,6 +157,20 @@ export const contatosServico = {
   },
 
   async obterPorId(clienteId: string, id: string) {
+    // ==========================================================================
+    // CACHE: Verificar cache Redis (TTL 300s - 5 min)
+    // Contatos mudam com média frequência
+    // ==========================================================================
+    const chaveCache = `obter:${id}`;
+    const cached = await cacheContatos.get<unknown>(chaveCache);
+
+    if (cached) {
+      logger.debug({ chaveCache, contatoId: id }, 'Contato: Cache HIT');
+      return cached;
+    }
+
+    logger.debug({ chaveCache, contatoId: id }, 'Contato: Cache MISS - executando query');
+
     const totalConversasSubquery = db
       .select({ total: count() })
       .from(conversas)
@@ -192,7 +221,7 @@ export const contatosServico = {
       .innerJoin(etiquetas, eq(contatosEtiquetas.etiquetaId, etiquetas.id))
       .where(eq(contatosEtiquetas.contatoId, id));
 
-    return {
+    const resultado = {
       id: contato.id,
       nome: contato.nome,
       telefone: contato.telefone,
@@ -206,6 +235,13 @@ export const contatosServico = {
       totalCartoes: Number(contato.totalCartoes),
       totalCompromissos: Number(contato.totalCompromissos),
     };
+
+    // ==========================================================================
+    // CACHE: Armazenar resultado (TTL 300s - 5 min)
+    // ==========================================================================
+    await cacheContatos.set(chaveCache, resultado, 300);
+
+    return resultado;
   },
 
   async criar(clienteId: string, dados: CriarContatoDTO) {
@@ -335,6 +371,9 @@ export const contatosServico = {
     // Sincronizar com Meilisearch
     enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'contatos', clienteId, documentoId: id }).catch(() => {});
 
+    // Invalidar cache
+    await invalidarCacheContato(id);
+
     return {
       ...contato,
       etiquetas: vinculosEtiquetas,
@@ -356,6 +395,9 @@ export const contatosServico = {
 
     // Sincronizar com Meilisearch
     enviarJob('busca.sincronizar', { operacao: 'remover', indice: 'contatos', clienteId, documentoId: id }).catch(() => {});
+
+    // Invalidar cache
+    await invalidarCacheContato(id);
   },
 
   async adicionarEtiqueta(clienteId: string, contatoId: string, etiquetaId: string) {
@@ -401,6 +443,9 @@ export const contatosServico = {
       clienteId,
     });
 
+    // Invalidar cache (etiquetas fazem parte do cache do contato)
+    await invalidarCacheContato(contatoId);
+
     return { mensagem: 'Etiqueta adicionada com sucesso' };
   },
 
@@ -438,6 +483,9 @@ export const contatosServico = {
           eq(contatosEtiquetas.etiquetaId, etiquetaId)
         )
       );
+
+    // Invalidar cache (etiquetas fazem parte do cache do contato)
+    await invalidarCacheContato(contatoId);
 
     return { mensagem: 'Etiqueta removida com sucesso' };
   },

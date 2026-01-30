@@ -155,3 +155,58 @@ export const redisServico = {
     }
   },
 };
+
+// =============================================================================
+// Classe CacheServico (Cache Estratégico com Namespaces)
+// =============================================================================
+
+export class CacheServico {
+  private namespace: string;
+
+  constructor(namespace = 'cache') {
+    this.namespace = namespace;
+  }
+
+  private construirChave(chave: string): string {
+    return `${this.namespace}:${chave}`;
+  }
+
+  async get<T>(chave: string): Promise<T | null> {
+    if (!redisDisponivel()) return null;
+    return cacheUtils.obter<T>(this.construirChave(chave));
+  }
+
+  async set(chave: string, valor: unknown, ttl = 300): Promise<void> {
+    if (!redisDisponivel()) return;
+    return cacheUtils.definir(this.construirChave(chave), valor, ttl);
+  }
+
+  async delete(chave: string): Promise<void> {
+    if (!redisDisponivel()) return;
+    return cacheUtils.remover(this.construirChave(chave));
+  }
+
+  async invalidar(padrao: string): Promise<number> {
+    if (!redisDisponivel()) return 0;
+    return cacheUtils.removerPorPadrao(this.construirChave(padrao));
+  }
+
+  async remember<T>(chave: string, callback: () => Promise<T>, ttl = 300): Promise<T> {
+    const cached = await this.get<T>(chave);
+    if (cached !== null) return cached;
+
+    const resultado = await callback();
+    await this.set(chave, resultado, ttl);
+    return resultado;
+  }
+}
+
+// =============================================================================
+// Instâncias Globais (por namespace)
+// =============================================================================
+
+export const cacheConversas = new CacheServico('conversas');
+export const cachePerfis = new CacheServico('perfis');
+export const cacheContatos = new CacheServico('contatos');
+export const cacheDashboard = new CacheServico('dashboard');
+export const cacheRelatorios = new CacheServico('relatorios');

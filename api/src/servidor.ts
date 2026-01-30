@@ -37,7 +37,7 @@ import { etiquetasRotas } from './modulos/etiquetas/index.js';
 import { conversasRotas } from './modulos/conversas/index.js';
 import { mensagensRotas, webhookMensagensRotas } from './modulos/mensagens/index.js';
 import { notasInternasRotas } from './modulos/notas-internas/index.js';
-import { fluxosRotas, nosRotas, respostasRapidasRotas } from './modulos/chatbot/index.js';
+import { fluxosRotas, nosRotas, respostasRapidasRotas, registrarRotasTransicoes } from './modulos/chatbot/index.js';
 import { campanhasRotas, logsRotas, mensagensAgendadasRotas } from './modulos/campanhas/index.js';
 import { quadrosRotas, colunasRotas, cartoesRotas } from './modulos/kanban/index.js';
 import { compromissosRotas, lembretesRotas } from './modulos/agendamento/index.js';
@@ -85,7 +85,7 @@ export async function criarServidor(): Promise<FastifyInstance> {
   });
 
   await app.register(cookie, {
-    secret: env.JWT_SECRET,
+    secret: env.COOKIE_SECRET,
     parseOptions: {},
   });
 
@@ -147,6 +147,7 @@ export async function criarServidor(): Promise<FastifyInstance> {
   if (temFrontend) {
     await app.register(fastifyStatic, {
       root: frontendPath,
+      wildcard: false, // Não usar wildcard - deixar setNotFoundHandler lidar com rotas SPA
     });
     logger.info({ path: frontendPath }, 'Frontend SPA disponivel');
   }
@@ -225,9 +226,10 @@ export async function criarServidor(): Promise<FastifyInstance> {
       // WhatsApp Webhooks (Meta Cloud API e UaiZap)
       apiRouter.register(webhookRotas, { prefix: '/whatsapp/webhook' });
 
-      // Chatbot (fluxos e nós)
+      // Chatbot (fluxos, nós e transições)
       apiRouter.register(fluxosRotas, { prefix: '/chatbot/fluxos' });
       apiRouter.register(nosRotas, { prefix: '/chatbot/fluxos' });
+      await registrarRotasTransicoes(apiRouter);
 
       // Respostas Rápidas
       apiRouter.register(respostasRapidasRotas, { prefix: '/respostas-rapidas' });
@@ -271,9 +273,26 @@ export async function criarServidor(): Promise<FastifyInstance> {
       });
     }
 
-    // SPA fallback: retorna index.html para rotas do frontend
+    // Arquivos estáticos que não existem (com extensão): retorna 404
+    const temExtensao = /\.[a-zA-Z0-9]+$/.test(request.url.split('?')[0]);
+    if (temExtensao) {
+      return reply.status(404).send({
+        sucesso: false,
+        erro: { codigo: 'ARQUIVO_NAO_ENCONTRADO', mensagem: 'Arquivo nao encontrado' },
+      });
+    }
+
+    // SPA fallback: retorna index.html para rotas do frontend (sem extensão)
     if (temFrontend) {
-      return reply.sendFile('index.html');
+      try {
+        return reply.sendFile('index.html');
+      } catch (err) {
+        logger.error({ err, url: request.url }, 'Erro ao servir index.html');
+        return reply.status(500).send({
+          sucesso: false,
+          erro: { codigo: 'ERRO_FRONTEND', mensagem: 'Erro ao carregar aplicacao' },
+        });
+      }
     }
 
     // Dev sem frontend: mostra info da API
@@ -304,15 +323,19 @@ export async function criarServidor(): Promise<FastifyInstance> {
       tempoResposta: reply.elapsedTime,
     });
 
-    // Metricas Prometheus
-    const rota = request.routeOptions?.url ?? request.url;
-    const labels = {
-      method: request.method,
-      route: rota,
-      status_code: String(reply.statusCode),
-    };
-    httpRequestsTotal.inc(labels);
-    httpRequestDuration.observe(labels, reply.elapsedTime / 1000);
+    // Metricas Prometheus (protegido contra erros)
+    try {
+      const rota = request.routeOptions?.url ?? request.url;
+      const labels = {
+        method: request.method,
+        route: rota,
+        status_code: String(reply.statusCode),
+      };
+      httpRequestsTotal.inc(labels);
+      httpRequestDuration.observe(labels, reply.elapsedTime / 1000);
+    } catch {
+      // Ignora erros de metricas para nao afetar a resposta
+    }
   });
 
   return app;

@@ -102,7 +102,10 @@ async function enviarLembrete(job: Job<JobLembrete>): Promise<void> {
 export async function registrarWorkerLembretes(): Promise<void> {
   await registrarWorker('lembrete.enviar', enviarLembrete, {
     batchSize: 2,
+    lockDuration: 60000, // 1 minuto (operação rápida)
+    stalledInterval: 30000, // Verificar a cada 30s
+    maxStalledCount: 2, // Máx 2 tentativas
   });
 
-  logger.info('Worker de lembretes registrado');
+  logger.info('Worker de lembretes registrado com timeout configurado');
 }

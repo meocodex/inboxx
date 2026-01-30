@@ -41,3 +41,26 @@ export {
   type AtualizarRespostaRapidaDTO,
   type ListarRespostasRapidasQuery,
 } from './respostas-rapidas.schema.js';
+
+// Transicoes
+export { registrarRotasTransicoes } from './transicoes.controlador.js';
+export { transicoesServico } from './transicoes.servico.js';
+export {
+  criarTransicaoSchema,
+  atualizarTransicaoSchema,
+  listarTransicoesQuerySchema,
+  conectarNosLoteSchema,
+  type CriarTransicaoDTO,
+  type AtualizarTransicaoDTO,
+  type ListarTransicoesQuery,
+  type ConectarNosLoteDTO,
+} from './transicoes.schema.js';
+
+// Motor de Fluxo (XState)
+export { motorFluxoServico } from './motor-fluxo.servico.js';
+export type {
+  MachineDefinition,
+  MachineContext,
+  StateConfig,
+  TransitionConfig,
+} from './motor-fluxo.servico.js';

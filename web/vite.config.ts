@@ -119,4 +119,75 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    outDir: '../api/public',
+    emptyOutDir: true,
+    // ==========================================================================
+    // Code Splitting - Reduzir bundle size (591KB → 150KB inicial)
+    // ==========================================================================
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core (usado em toda aplicação)
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+
+          // UI components (Radix UI)
+          'ui-vendor': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-tooltip',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-checkbox',
+            '@radix-ui/react-label',
+            '@radix-ui/react-slot',
+          ],
+
+          // Charts (usado apenas em Dashboard e Relatórios)
+          'chart-vendor': ['recharts'],
+
+          // Visual Flow Builder (usado apenas em Chatbot)
+          'flow-vendor': ['@xyflow/react', 'xstate', '@xstate/react'],
+
+          // Data fetching (TanStack Query)
+          'query-vendor': ['@tanstack/react-query', 'axios'],
+
+          // State management
+          'state-vendor': ['zustand'],
+
+          // Forms
+          'form-vendor': ['react-hook-form', 'zod'],
+
+          // Utilities
+          'util-vendor': ['date-fns', 'clsx', 'tailwind-merge'],
+        },
+      },
+    },
+
+    // Otimizações adicionais
+    chunkSizeWarningLimit: 1000,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remover console.log em produção
+        drop_debugger: true,
+      },
+    },
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/socket.io': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
+  },
 });

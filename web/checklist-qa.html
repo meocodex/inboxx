@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist QA - CRM WhatsApp</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 { font-size: 36px; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 18px; }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .stat {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        .category {
+            margin-bottom: 40px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .category-header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .category-progress {
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        .category-body {
+            padding: 20px;
+        }
+        
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #dee2e6;
+            transition: all 0.3s;
+        }
+        .checklist-item:hover { background: #e9ecef; }
+        .checklist-item.checked {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .checklist-item.unchecked {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            margin-right: 16px;
+            cursor: pointer;
+        }
+        .item-text {
+            flex: 1;
+            font-size: 15px;
+        }
+        .item-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-ok {
+            background: #28a745;
+            color: white;
+        }
+        .status-error {
+            background: #dc3545;
+            color: white;
+        }
+        .status-pending {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .actions {
+            padding: 30px;
+            background: #f8f9fa;
+            border-top: 2px solid #dee2e6;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Checklist QA - CRM WhatsApp Omnichannel</h1>
+            <p>Acompanhamento de testes e validações do sistema</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" style="color: #667eea;" id="totalItems">0</div>
+                <div class="stat-label">Total de Itens</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" style="color: #28a745;" id="checkedItems">0</div>
+                <div class="stat-label">Concluídos</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" style="color: #dc3545;" id="uncheckedItems">0</div>
+                <div class="stat-label">Pendentes</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" style="color: #ffc107;" id="progressPercent">0%</div>
+                <div class="stat-label">Progresso</div>
+            </div>
+        </div>
+        
+        <div class="content" id="content">
+            <!-- Categories will be inserted here -->
+        </div>
+        
+        <div class="actions">
+            <button class="btn btn-primary" onclick="checkAll()">✅ Marcar Todos</button>
+            <button class="btn btn-primary" onclick="uncheckAll()">⬜ Desmarcar Todos</button>
+            <button class="btn btn-success" onclick="exportReport()">📄 Exportar Relatório</button>
+        </div>
+    </div>
+
+    <script>
+        const categories = [
+            {
+                name: "1. LOGIN E AUTENTICAÇÃO",
+                color: "#667eea",
+                items: [
+                    { text: "Acessar a página de login", status: "ok" },
+                    { text: "Fazer login com as credenciais", status: "ok" },
+                    { text: "Verificar se o token é salvo corretamente", status: "ok" },
+                    { text: "Verificar se NÃO há logout automático (bug anterior)", status: "pending" },
+                    { text: "Verificar se o dashboard carrega corretamente", status: "ok" },
+                    { text: "Verificar se o nome do usuário aparece no menu", status: "pending" }
+                ]
+            },
+            {
+                name: "2. NAVEGAÇÃO - Dashboard/Painel",
+                color: "#764ba2",
+                items: [
+                    { text: "Acessar /painel", status: "ok" },
+                    { text: "Verificar se cards de métricas carregam", status: "pending" },
+                    { text: "Verificar se gráficos são exibidos", status: "pending" },
+                    { text: "Verificar se dados são exibidos corretamente", status: "pending" }
+                ]
+            },
+            {
+                name: "3. NAVEGAÇÃO - Conversas",
+                color: "#28a745",
+                items: [
+                    { text: "Acessar /conversas", status: "ok" },
+                    { text: "Verificar lista de conversas", status: "ok" },
+                    { text: "Testar abertura de uma conversa", status: "pending" },
+                    { text: "Testar envio de mensagem", status: "pending" },
+                    { text: "Verificar carregamento de histórico", status: "pending" }
+                ]
+            },
+            {
+                name: "4. NAVEGAÇÃO - Chatbot (CRÍTICO)",
+                color: "#dc3545",
+                items: [
+                    { text: "Acessar /chatbot", status: "ok" },
+                    { text: "Verificar listagem de fluxos", status: "ok" },
+                    { text: "Testar criação de novo fluxo", status: "pending" },
+                    { text: "Acessar o editor visual de fluxos", status: "pending" },
+                    { text: "ARRASTAR blocos da barra lateral para o canvas", status: "pending" },
+                    { text: "Testar conexão entre nós", status: "pending" },
+                    { text: "Testar edição de propriedades de um nó", status: "pending" },
+                    { text: "Testar salvamento do fluxo", status: "pending" },
+                    { text: "Verificar se há erros no console", status: "pending" }
+                ]
+            },
+            {
+                name: "5. OUTROS MÓDULOS",
+                color: "#17a2b8",
+                items: [
+                    { text: "Contatos - Listar e buscar", status: "ok" },
+                    { text: "Etiquetas - Listar e criar", status: "ok" },
+                    { text: "Campanhas - Visualizar", status: "ok" },
+                    { text: "Kanban - Drag and drop", status: "pending" },
+                    { text: "Agenda - Calendário", status: "pending" },
+                    { text: "Conexões - QR Code WhatsApp", status: "pending" },
+                    { text: "Relatórios - Gráficos e filtros", status: "error" },
+                    { text: "Usuários - Gerenciar", status: "ok" },
+                    { text: "Configurações - Alterar", status: "pending" }
+                ]
+            },
+            {
+                name: "6. PERFORMANCE E QUALIDADE",
+                color: "#ffc107",
+                items: [
+                    { text: "Verificar tempo de carregamento < 2s", status: "ok" },
+                    { text: "Verificar console sem erros JavaScript", status: "pending" },
+                    { text: "Verificar requisições sem 4xx/5xx", status: "pending" },
+                    { text: "Verificar responsividade mobile", status: "pending" },
+                    { text: "Verificar tooltips e feedback visual", status: "pending" }
+                ]
+            }
+        ];
+
+        function renderCategories() {
+            const content = document.getElementById('content');
+            content.innerHTML = '';
+            
+            categories.forEach((category, catIndex) => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'category';
+                
+                const checkedCount = category.items.filter((item, idx) => {
+                    const key = `check_${catIndex}_${idx}`;
+                    return localStorage.getItem(key) === 'true';
+                }).length;
+                
+                const totalCount = category.items.length;
+                const progress = ((checkedCount / totalCount) * 100).toFixed(0);
+                
+                categoryDiv.innerHTML = `
+                    <div class="category-header" style="background: ${category.color};">
+                        <span>${category.name}</span>
+                        <span class="category-progress">${checkedCount}/${totalCount} (${progress}%)</span>
+                    </div>
+                    <div class="category-body" id="cat_${catIndex}"></div>
+                `;
+                
+                content.appendChild(categoryDiv);
+                
+                const bodyDiv = document.getElementById(`cat_${catIndex}`);
+                category.items.forEach((item, itemIndex) => {
+                    const key = `check_${catIndex}_${itemIndex}`;
+                    const isChecked = localStorage.getItem(key) === 'true';
+                    
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = `checklist-item ${isChecked ? 'checked' : ''}`;
+                    
+                    const statusClass = item.status === 'ok' ? 'status-ok' : 
+                                        item.status === 'error' ? 'status-error' : 'status-pending';
+                    const statusText = item.status === 'ok' ? 'OK' : 
+                                       item.status === 'error' ? 'ERRO' : 'PENDENTE';
+                    
+                    itemDiv.innerHTML = `
+                        <input type="checkbox" class="checkbox" ${isChecked ? 'checked' : ''} 
+                               onchange="toggleCheck(${catIndex}, ${itemIndex}, this.checked)">
+                        <span class="item-text">${item.text}</span>
+                        <span class="item-status ${statusClass}">${statusText}</span>
+                    `;
+                    
+                    bodyDiv.appendChild(itemDiv);
+                });
+            });
+            
+            updateStats();
+        }
+
+        function toggleCheck(catIndex, itemIndex, checked) {
+            const key = `check_${catIndex}_${itemIndex}`;
+            localStorage.setItem(key, checked);
+            renderCategories();
+        }
+
+        function updateStats() {
+            let total = 0;
+            let checked = 0;
+            
+            categories.forEach((category, catIndex) => {
+                category.items.forEach((item, itemIndex) => {
+                    total++;
+                    const key = `check_${catIndex}_${itemIndex}`;
+                    if (localStorage.getItem(key) === 'true') {
+                        checked++;
+                    }
+                });
+            });
+            
+            const unchecked = total - checked;
+            const progress = total > 0 ? ((checked / total) * 100).toFixed(1) : 0;
+            
+            document.getElementById('totalItems').textContent = total;
+            document.getElementById('checkedItems').textContent = checked;
+            document.getElementById('uncheckedItems').textContent = unchecked;
+            document.getElementById('progressPercent').textContent = progress + '%';
+        }
+
+        function checkAll() {
+            categories.forEach((category, catIndex) => {
+                category.items.forEach((item, itemIndex) => {
+                    const key = `check_${catIndex}_${itemIndex}`;
+                    localStorage.setItem(key, 'true');
+                });
+            });
+            renderCategories();
+        }
+
+        function uncheckAll() {
+            if (confirm('Tem certeza que deseja desmarcar todos os itens?')) {
+                localStorage.clear();
+                renderCategories();
+            }
+        }
+
+        function exportReport() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                categories: categories.map((category, catIndex) => ({
+                    name: category.name,
+                    items: category.items.map((item, itemIndex) => ({
+                        text: item.text,
+                        status: item.status,
+                        checked: localStorage.getItem(`check_${catIndex}_${itemIndex}`) === 'true'
+                    }))
+                }))
+            };
+            
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `checklist-qa-${Date.now()}.json`;
+            a.click();
+        }
+
+        // Initialize on page load
+        renderCategories();
+    </script>
+</body>
+</html>

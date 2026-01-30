@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
 
 import { logger } from '../../../compartilhado/utilitarios/logger.js';
+import { agendarEnvioWhatsApp } from '../../../infraestrutura/rate-limiting/whatsapp-limiter.js';
 import type { IProvedorWhatsApp, EnviarMensagemOpcoes } from './provedor.interface.js';
 import type {
   ConteudoMensagem,
@@ -51,36 +52,39 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
     conteudo: ConteudoMensagem,
     opcoes?: EnviarMensagemOpcoes
   ): Promise<ResultadoEnvio> {
-    try {
-      const endpoint = this.obterEndpoint(conteudo.tipo);
-      const payload = this.construirPayload(telefone, conteudo, opcoes);
+    // CRÍTICO: Rate limiting WhatsApp (80 msg/s)
+    return agendarEnvioWhatsApp(async () => {
+      try {
+        const endpoint = this.obterEndpoint(conteudo.tipo);
+        const payload = this.construirPayload(telefone, conteudo, opcoes);
 
-      const response = await this.api.post(
-        `/instancias/${this.config.instanciaId}/${endpoint}`,
-        payload
-      );
+        const response = await this.api.post(
+          `/instancias/${this.config.instanciaId}/${endpoint}`,
+          payload
+        );
 
-      const mensagemId = response.data.id || response.data.mensagemId;
+        const mensagemId = response.data.id || response.data.mensagemId;
 
-      logger.debug({ telefone, mensagemId }, 'UaiZap: Mensagem enviada');
+        logger.debug({ telefone, mensagemId }, 'UaiZap: Mensagem enviada');
 
-      return {
-        sucesso: true,
-        mensagemId,
-        provedor: 'UAIZAP',
-        timestamp: new Date(),
-      };
-    } catch (erro) {
-      const mensagemErro = this.extrairErro(erro);
-      logger.error({ erro: mensagemErro, telefone }, 'UaiZap: Erro ao enviar mensagem');
+        return {
+          sucesso: true,
+          mensagemId,
+          provedor: 'UAIZAP',
+          timestamp: new Date(),
+        };
+      } catch (erro) {
+        const mensagemErro = this.extrairErro(erro);
+        logger.error({ erro: mensagemErro, telefone }, 'UaiZap: Erro ao enviar mensagem');
 
-      return {
-        sucesso: false,
-        erro: mensagemErro,
-        provedor: 'UAIZAP',
-        timestamp: new Date(),
-      };
-    }
+        return {
+          sucesso: false,
+          erro: mensagemErro,
+          provedor: 'UAIZAP',
+          timestamp: new Date(),
+        };
+      }
+    }, `msg:${telefone}:${Date.now()}`);
   }
 
   // ===========================================================================
@@ -180,12 +184,39 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
     let texto = templateNome;
 
     if (parametros) {
+      // Limitar número de substituições (prevenir loop)
+      let substituicoes = 0;
+      const MAX_SUBSTITUICOES = 20;
+
       Object.entries(parametros).forEach(([chave, valor]) => {
-        texto = texto.replace(`{{${chave}}}`, valor);
+        if (substituicoes >= MAX_SUBSTITUICOES) {
+          logger.warn('Limite de substituições de template atingido');
+          return;
+        }
+
+        // Sanitizar antes de substituir (prevenir template injection)
+        const valorSanitizado = this.sanitizarParametroTemplate(valor);
+        const placeholder = `{{${chave}}}`;
+
+        // Substituir apenas primeira ocorrência (prevenir recursão)
+        texto = texto.replace(placeholder, valorSanitizado);
+        substituicoes++;
       });
     }
 
     return this.enviarMensagem(telefone, { tipo: 'text', texto });
+  }
+
+  // ===========================================================================
+  // Sanitização de Parâmetros
+  // ===========================================================================
+
+  private sanitizarParametroTemplate(valor: string): string {
+    return valor
+      .replace(/\{\{/g, '&#123;&#123;') // Escape {{ para HTML entity
+      .replace(/\}\}/g, '&#125;&#125;') // Escape }}
+      .replace(/[<>]/g, '') // Remover tags HTML
+      .substring(0, 1000); // Limitar tamanho (prevenir DoS)
   }
 
   // ===========================================================================

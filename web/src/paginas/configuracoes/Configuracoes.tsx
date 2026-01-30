@@ -9,6 +9,7 @@ import {
   Shield,
   Smartphone,
   Building,
+  Settings,
 } from 'lucide-react';
 import { autenticacaoServico } from '@/servicos';
 import { useAutenticacao, useToast } from '@/hooks';
@@ -17,6 +18,13 @@ import { Input } from '@/componentes/ui/input';
 import { Label } from '@/componentes/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/componentes/ui/card';
 import { Switch } from '@/componentes/ui/switch';
+import {
+  SidebarSecundaria,
+  CabecalhoSidebar,
+  SecaoSidebar,
+  ItemSidebar,
+  CabecalhoPagina,
+} from '@/componentes/layout';
 
 // =============================================================================
 // Schemas
@@ -40,7 +48,7 @@ type PerfilForm = z.infer<typeof perfilSchema>;
 type SenhaForm = z.infer<typeof senhaSchema>;
 
 // =============================================================================
-// Abas de Configuração
+// Abas de Configuracao
 // =============================================================================
 
 type AbaConfig = 'perfil' | 'notificacoes' | 'seguranca' | 'conexoes' | 'empresa';
@@ -105,7 +113,7 @@ export default function Configuracoes() {
   });
 
   // ---------------------------------------------------------------------------
-  // Render Conteúdo
+  // Render Conteudo
   // ---------------------------------------------------------------------------
   const renderConteudo = () => {
     switch (abaAtiva) {
@@ -273,42 +281,44 @@ export default function Configuracoes() {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Configuracoes</h1>
-        <p className="text-muted-foreground">Gerencie suas preferencias</p>
-      </div>
+    <div className="flex h-full">
+      {/* Sidebar Secundaria - Navegacao */}
+      <SidebarSecundaria largura="sm">
+        <CabecalhoSidebar
+          titulo="Configuracoes"
+          subtitulo="Preferencias do sistema"
+        />
 
-      {/* Layout */}
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Menu Lateral */}
-        <Card className="md:w-64 shrink-0">
-          <CardContent className="p-2">
-            <nav className="space-y-1">
-              {abas.map((aba) => {
-                const Icon = aba.icon;
-                return (
-                  <button
-                    key={aba.id}
-                    onClick={() => setAbaAtiva(aba.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
-                      abaAtiva === aba.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-muted'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {aba.label}
-                  </button>
-                );
-              })}
-            </nav>
-          </CardContent>
-        </Card>
+        <SecaoSidebar titulo="Navegacao">
+          {abas.map((aba) => {
+            const Icon = aba.icon;
+            return (
+              <ItemSidebar
+                key={aba.id}
+                icone={<Icon className="h-4 w-4" />}
+                label={aba.label}
+                ativo={abaAtiva === aba.id}
+                onClick={() => setAbaAtiva(aba.id)}
+              />
+            );
+          })}
+        </SecaoSidebar>
+      </SidebarSecundaria>
 
-        {/* Conteúdo */}
-        <div className="flex-1">{renderConteudo()}</div>
+      {/* Conteudo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <CabecalhoPagina
+          titulo="Configuracoes"
+          subtitulo="Gerencie suas preferencias"
+          icone={<Settings className="h-5 w-5" />}
+        />
+
+        {/* Area de Conteudo */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="max-w-2xl">
+            {renderConteudo()}
+          </div>
+        </div>
       </div>
     </div>
   );

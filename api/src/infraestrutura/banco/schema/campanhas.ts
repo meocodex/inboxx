@@ -2,7 +2,7 @@
 // Tabelas: campanhas, campanhas_log, mensagens_agendadas
 // =============================================================================
 
-import { pgTable, uuid, text, jsonb, integer, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, jsonb, integer, timestamp, index, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 import { clientes } from './clientes.js';
@@ -43,6 +43,8 @@ export const campanhasLog = pgTable('campanhas_log', {
   enviadoEm: timestamp('enviado_em', { withTimezone: true }),
 }, (t) => [
   index('campanhas_log_campanha_id_status_idx').on(t.campanhaId, t.status),
+  // IDEMPOTÊNCIA: Previne duplicatas de envio para mesmo contato em uma campanha
+  unique('campanhas_log_campanha_contato_unique').on(t.campanhaId, t.contatoId),
 ]);
 
 export const campanhasLogRelations = relations(campanhasLog, ({ one }) => ({
