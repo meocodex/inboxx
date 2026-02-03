@@ -1,6 +1,6 @@
 import { memo, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { useUsuario, useCarregandoAuth, useAutenticacaoStore } from '@/stores';
+import { useUsuario, useCarregandoAuth, useAutenticacaoStore, useHidratado } from '@/stores';
 import { estaAutenticado } from '@/servicos/api';
 import { TooltipProvider } from '@/componentes/ui/tooltip';
 import { MenuLateral } from './MenuLateral';
@@ -14,12 +14,18 @@ export const LayoutPrincipal = memo(() => {
   const navigate = useNavigate();
   const usuario = useUsuario();
   const carregando = useCarregandoAuth();
+  const hidratado = useHidratado();
   const carregarUsuario = useAutenticacaoStore((s) => s.carregarUsuario);
 
   // ---------------------------------------------------------------------------
-  // Verificar autenticação apenas uma vez ao montar
+  // Verificar autenticação APÓS hidratação do Zustand
   // ---------------------------------------------------------------------------
   useEffect(() => {
+    // Esperar Zustand terminar rehydrate antes de tomar qualquer decisão
+    if (!hidratado) {
+      return;
+    }
+
     // Sem token = redireciona para login
     if (!estaAutenticado()) {
       navigate('/entrar', { replace: true });
@@ -27,24 +33,24 @@ export const LayoutPrincipal = memo(() => {
     }
 
     // Tem token mas não tem usuário = carrega do backend
-    // (Zustand pode já ter carregado do localStorage via persist)
     if (!usuario && !carregando) {
       carregarUsuario();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Executa apenas uma vez ao montar
+  }, [hidratado, usuario, carregando, carregarUsuario, navigate]);
 
   // ---------------------------------------------------------------------------
-  // Redireciona se perder autenticação
+  // Aguardar hidratação do Zustand
   // ---------------------------------------------------------------------------
-  useEffect(() => {
-    if (!estaAutenticado() && !carregando) {
-      navigate('/entrar', { replace: true });
-    }
-  }, [usuario, carregando, navigate]);
+  if (!hidratado) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Carregando tamanho="lg" texto="Inicializando..." />
+      </div>
+    );
+  }
 
   // ---------------------------------------------------------------------------
-  // Loading enquanto carrega
+  // Loading enquanto carrega usuário
   // ---------------------------------------------------------------------------
   if (carregando) {
     return (
@@ -55,7 +61,18 @@ export const LayoutPrincipal = memo(() => {
   }
 
   // ---------------------------------------------------------------------------
-  // Sem usuário após carregar = aguarda (Zustand vai popular)
+  // Sem token após hidratação = redirect (tratado no useEffect)
+  // ---------------------------------------------------------------------------
+  if (!estaAutenticado()) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Carregando tamanho="lg" texto="Redirecionando..." />
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tem token mas sem usuário = aguarda carregamento
   // ---------------------------------------------------------------------------
   if (!usuario) {
     return (

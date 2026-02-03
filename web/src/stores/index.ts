@@ -4,6 +4,7 @@ export {
   useEstaAutenticado,
   useCarregandoAuth,
   useErroAuth,
+  useHidratado,
 } from './autenticacao.store';
 
 export {

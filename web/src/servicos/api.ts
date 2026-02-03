@@ -14,6 +14,9 @@ export const api: AxiosInstance = axios.create({
   },
 });
 
+// Flag para evitar múltiplos redirects simultâneos
+let redirecionando = false;
+
 // =============================================================================
 // Interceptor de Request - Adiciona Token
 // =============================================================================
@@ -39,7 +42,7 @@ api.interceptors.response.use(
     const status = error.response?.status;
 
     // Token expirado - tentar refresh
-    if (status === 401) {
+    if (status === 401 && !redirecionando) {
       const refreshToken = obterRefreshToken();
 
       if (refreshToken) {
@@ -58,13 +61,30 @@ api.interceptors.response.use(
             return api(config);
           }
         } catch {
-          // Refresh falhou - fazer logout
+          // Refresh falhou - limpar tokens e redirecionar
+          redirecionando = true;
           limparTokens();
-          window.location.href = '/entrar';
+
+          // Usar setTimeout para dar tempo ao React processar
+          setTimeout(() => {
+            redirecionando = false;
+            // Soft redirect - usa replace para não adicionar ao histórico
+            if (typeof window !== 'undefined' && window.location.pathname !== '/entrar') {
+              window.location.replace('/entrar');
+            }
+          }, 100);
         }
       } else {
+        // Sem refresh token - limpar e redirecionar
+        redirecionando = true;
         limparTokens();
-        window.location.href = '/entrar';
+
+        setTimeout(() => {
+          redirecionando = false;
+          if (typeof window !== 'undefined' && window.location.pathname !== '/entrar') {
+            window.location.replace('/entrar');
+          }
+        }, 100);
       }
     }
 
@@ -100,6 +120,10 @@ export function salvarTokens(accessToken: string, refreshToken: string): void {
       console.error('[AUTH] Falha ao salvar token no localStorage');
       throw new Error('LocalStorage bloqueado ou indisponível');
     }
+
+    if (import.meta.env.DEV) {
+      console.log('[AUTH] Tokens salvos com sucesso');
+    }
   } catch (erro) {
     console.error('[AUTH] Erro ao salvar tokens:', erro);
     throw erro;
@@ -109,6 +133,12 @@ export function salvarTokens(accessToken: string, refreshToken: string): void {
 export function limparTokens(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_KEY);
+  // Também limpar o persist do Zustand para evitar inconsistência
+  localStorage.removeItem('crm-auth-storage');
+
+  if (import.meta.env.DEV) {
+    console.log('[AUTH] Tokens e sessão limpos');
+  }
 }
 
 export function estaAutenticado(): boolean {

@@ -12,12 +12,14 @@ interface EstadoAutenticacao {
   usuario: Usuario | null;
   carregando: boolean;
   erro: string | null;
+  hidratado: boolean; // Indica se rehydrate do Zustand terminou
 
   // Ações
   entrar: (email: string, senha: string) => Promise<void>;
   sair: () => Promise<void>;
   carregarUsuario: () => Promise<void>;
   limparErro: () => void;
+  limparSessao: () => void; // Para o interceptor chamar sem hard redirect
 }
 
 // =============================================================================
@@ -26,10 +28,11 @@ interface EstadoAutenticacao {
 
 export const useAutenticacaoStore = create<EstadoAutenticacao>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       usuario: null,
       carregando: false,
       erro: null,
+      hidratado: false,
 
       // -------------------------------------------------------------------------
       // Entrar
@@ -44,6 +47,7 @@ export const useAutenticacaoStore = create<EstadoAutenticacao>()(
             console.log('[AUTH] Login bem-sucedido:', resposta.usuario.nome);
           }
 
+          // Setar usuario - persist vai salvar automaticamente
           set({ usuario: resposta.usuario, carregando: false });
         } catch (error) {
           if (import.meta.env.DEV) {
@@ -75,6 +79,14 @@ export const useAutenticacaoStore = create<EstadoAutenticacao>()(
       // Carregar Usuário (verificar sessão)
       // -------------------------------------------------------------------------
       carregarUsuario: async () => {
+        // Se já tem usuario, não precisa carregar
+        if (get().usuario) {
+          if (import.meta.env.DEV) {
+            console.log('[AUTH] carregarUsuario: já tem usuário, ignorando');
+          }
+          return;
+        }
+
         if (!estaAutenticado()) {
           if (import.meta.env.DEV) {
             console.log('[AUTH] carregarUsuario: sem token, ignorando');
@@ -121,6 +133,14 @@ export const useAutenticacaoStore = create<EstadoAutenticacao>()(
       },
 
       // -------------------------------------------------------------------------
+      // Limpar Sessão (para interceptor usar sem hard redirect)
+      // -------------------------------------------------------------------------
+      limparSessao: () => {
+        limparTokens();
+        set({ usuario: null, carregando: false, erro: null });
+      },
+
+      // -------------------------------------------------------------------------
       // Limpar Erro
       // -------------------------------------------------------------------------
       limparErro: () => set({ erro: null }),
@@ -128,10 +148,18 @@ export const useAutenticacaoStore = create<EstadoAutenticacao>()(
     {
       name: 'crm-auth-storage',
       partialize: (state) => ({ usuario: state.usuario }),
-      onRehydrateStorage: () => (state) => {
-        if (import.meta.env.DEV) {
-          console.log('[AUTH] Rehydrate:', state?.usuario ? `usuário: ${state.usuario.nome}` : 'sem usuário');
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('[AUTH] Erro no rehydrate:', error);
         }
+        if (import.meta.env.DEV) {
+          console.log(
+            '[AUTH] Rehydrate:',
+            state?.usuario ? `usuário: ${state.usuario.nome}` : 'sem usuário'
+          );
+        }
+        // Marcar como hidratado após o rehydrate
+        useAutenticacaoStore.setState({ hidratado: true });
       },
     }
   )
@@ -145,3 +173,4 @@ export const useUsuario = () => useAutenticacaoStore((state) => state.usuario);
 export const useEstaAutenticado = () => useAutenticacaoStore((state) => !!state.usuario);
 export const useCarregandoAuth = () => useAutenticacaoStore((state) => state.carregando);
 export const useErroAuth = () => useAutenticacaoStore((state) => state.erro);
+export const useHidratado = () => useAutenticacaoStore((state) => state.hidratado);

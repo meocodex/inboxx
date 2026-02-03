@@ -1,7 +1,6 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAutenticacaoStore } from '@/stores';
-import { estaAutenticado } from '@/servicos/api';
 
 // =============================================================================
 // Hook de Autenticação
@@ -15,18 +14,12 @@ export function useAutenticacao() {
     erro,
     entrar: entrarStore,
     sair: sairStore,
-    carregarUsuario,
     limparErro,
   } = useAutenticacaoStore();
 
-  // ---------------------------------------------------------------------------
-  // Carregar usuário ao montar
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    if (estaAutenticado() && !usuario) {
-      carregarUsuario();
-    }
-  }, [usuario, carregarUsuario]);
+  // REMOVIDO: useEffect que carregava usuário automaticamente
+  // O carregamento agora é responsabilidade exclusiva do LayoutPrincipal
+  // Isso evita race conditions entre a página de login e o layout
 
   // ---------------------------------------------------------------------------
   // Entrar
