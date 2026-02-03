@@ -275,6 +275,14 @@ class AutenticacaoServico {
     await cacheUtils.remover(`${PREFIXO_TENTATIVAS}${email}`);
     await cacheUtils.remover(`${PREFIXO_BLOQUEIO}${email}`);
   }
+
+  // ---------------------------------------------------------------------------
+  // Desbloquear Conta (Admin)
+  // ---------------------------------------------------------------------------
+  async desbloquearConta(email: string): Promise<void> {
+    await cacheUtils.remover(`${PREFIXO_TENTATIVAS}${email}`);
+    await cacheUtils.remover(`${PREFIXO_BLOQUEIO}${email}`);
+  }
 }
 
 export const autenticacaoServico = new AutenticacaoServico();

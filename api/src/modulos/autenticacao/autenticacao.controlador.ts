@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { z } from 'zod';
 
 import { autenticacaoServico } from './autenticacao.servico.js';
 import {
@@ -8,6 +9,11 @@ import {
   type RenovarDTO,
 } from './autenticacao.schema.js';
 import { ErroValidacao } from '../../compartilhado/erros/index.js';
+
+const desbloquearBodySchema = z.object({
+  email: z.string().email(),
+  chave: z.string(),
+});
 
 // =============================================================================
 // Rotas de Autenticacao
@@ -105,6 +111,30 @@ export async function autenticacaoRotas(app: FastifyInstance) {
       return reply.status(200).send({
         sucesso: true,
         dados: usuario,
+      });
+    }
+  );
+
+  // ---------------------------------------------------------------------------
+  // POST /api/autenticacao/desbloquear - Desbloquear conta (emergência)
+  // ---------------------------------------------------------------------------
+  app.post<{ Body: { email: string; chave: string } }>(
+    '/desbloquear',
+    async (request: FastifyRequest<{ Body: { email: string; chave: string } }>, reply: FastifyReply) => {
+      const { email, chave } = desbloquearBodySchema.parse(request.body);
+
+      // Chave secreta para desbloquear (usar JWT_SECRET como chave)
+      const chaveSecreta = process.env.JWT_SECRET || 'desbloquear-crm-2026';
+
+      if (chave !== chaveSecreta) {
+        throw new ErroValidacao('Chave de desbloqueio inválida');
+      }
+
+      await autenticacaoServico.desbloquearConta(email);
+
+      return reply.status(200).send({
+        sucesso: true,
+        mensagem: `Conta ${email} desbloqueada com sucesso`,
       });
     }
   );
