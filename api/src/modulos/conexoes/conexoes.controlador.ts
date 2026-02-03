@@ -170,4 +170,64 @@ export async function conexoesRotas(app: FastifyInstance) {
       });
     }
   );
+
+  // ---------------------------------------------------------------------------
+  // GET /api/conexoes/:id/qrcode - Obter QR Code (UaiZap)
+  // ---------------------------------------------------------------------------
+  app.get<{ Params: { id: string } }>(
+    '/:id/qrcode',
+    {
+      preHandler: [app.autenticar, app.verificarPermissao('conexoes:visualizar')],
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const clienteId = extrairClienteId(request);
+
+      const resultado = await conexoesServico.obterQRCode(clienteId, request.params.id);
+
+      return reply.status(200).send({
+        sucesso: true,
+        dados: resultado,
+      });
+    }
+  );
+
+  // ---------------------------------------------------------------------------
+  // POST /api/conexoes/:id/reconectar - Reconectar (UaiZap)
+  // ---------------------------------------------------------------------------
+  app.post<{ Params: { id: string } }>(
+    '/:id/reconectar',
+    {
+      preHandler: [app.autenticar, app.verificarPermissao('conexoes:editar')],
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const clienteId = extrairClienteId(request);
+
+      const resultado = await conexoesServico.reconectar(clienteId, request.params.id);
+
+      return reply.status(200).send({
+        sucesso: resultado.sucesso,
+        mensagem: resultado.mensagem,
+      });
+    }
+  );
+
+  // ---------------------------------------------------------------------------
+  // POST /api/conexoes/:id/desconectar - Desconectar (UaiZap)
+  // ---------------------------------------------------------------------------
+  app.post<{ Params: { id: string } }>(
+    '/:id/desconectar',
+    {
+      preHandler: [app.autenticar, app.verificarPermissao('conexoes:editar')],
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const clienteId = extrairClienteId(request);
+
+      const resultado = await conexoesServico.desconectar(clienteId, request.params.id);
+
+      return reply.status(200).send({
+        sucesso: resultado.sucesso,
+        mensagem: resultado.mensagem,
+      });
+    }
+  );
 }

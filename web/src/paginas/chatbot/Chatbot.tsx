@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -74,6 +75,7 @@ type FiltroStatus = 'todos' | StatusFluxo;
 
 export default function Chatbot() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { erro: mostrarErro, sucesso: mostrarSucesso } = useToast();
 
   const [modalAberto, setModalAberto] = useState(false);
@@ -311,6 +313,11 @@ export default function Chatbot() {
                   <CardItem
                     key={fluxo.id}
                     acoes={[
+                      {
+                        label: 'Abrir Editor',
+                        icone: <GitBranch className="h-4 w-4" />,
+                        onClick: () => navigate(`/chatbot/fluxo/${fluxo.id}`),
+                      },
                       {
                         label: 'Editar',
                         icone: <Pencil className="h-4 w-4" />,

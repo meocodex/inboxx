@@ -4,6 +4,7 @@ import { registrarWorkerMensagensAgendadas } from './mensagens-agendadas.worker.
 import { registrarWorkerLembretes } from './lembretes.worker.js';
 import { registrarWorkerWebhooksRetry } from './webhooks-retry.worker.js';
 import { registrarWorkerBuscaSincronizacao } from './sincronizacao-busca.worker.js';
+import { registrarWorkerChatbotEsperar } from './chatbot-esperar.worker.js';
 import { registrarWorkerDLQ } from './dlq.worker.js';
 
 // =============================================================================
@@ -19,6 +20,7 @@ export async function registrarTodosWorkers(): Promise<void> {
   await registrarWorkerLembretes();
   await registrarWorkerWebhooksRetry();
   await registrarWorkerBuscaSincronizacao();
+  await registrarWorkerChatbotEsperar();
 
   logger.info('Todos os workers registrados com sucesso');
 }
@@ -32,4 +34,5 @@ export { registrarWorkerMensagensAgendadas } from './mensagens-agendadas.worker.
 export { registrarWorkerLembretes } from './lembretes.worker.js';
 export { registrarWorkerWebhooksRetry } from './webhooks-retry.worker.js';
 export { registrarWorkerBuscaSincronizacao } from './sincronizacao-busca.worker.js';
+export { registrarWorkerChatbotEsperar } from './chatbot-esperar.worker.js';
 export { registrarWorkerDLQ } from './dlq.worker.js';

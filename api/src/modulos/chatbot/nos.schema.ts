@@ -10,11 +10,12 @@ export const tipoNoEnum = z.enum([
   'INICIO',
   'MENSAGEM',
   'PERGUNTA',
+  'MENU',
   'CONDICAO',
-  'DELAY',
+  'TRANSFERIR',
   'WEBHOOK',
-  'ATRIBUIR_TAG',
-  'TRANSFERIR_HUMANO',
+  'ESPERAR',
+  'ACAO',
   'FIM',
 ]);
 

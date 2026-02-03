@@ -2,7 +2,7 @@
 // Tipos de Provedor
 // =============================================================================
 
-export type TipoProvedor = 'META_API' | 'UAIZAP';
+export type TipoProvedor = 'META_API' | 'UAIZAP' | 'GRAPH_API';
 
 // =============================================================================
 // Mensagem WhatsApp

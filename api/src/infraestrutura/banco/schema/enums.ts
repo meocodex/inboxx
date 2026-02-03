@@ -20,6 +20,7 @@ export const provedorConexaoEnum = pgEnum('ProvedorConexao', [
 export const statusConexaoEnum = pgEnum('StatusConexao', [
   'CONECTADO',
   'DESCONECTADO',
+  'AGUARDANDO_QR',
   'RECONECTANDO',
   'ERRO',
 ]);
@@ -64,11 +65,12 @@ export const tipoNoChatbotEnum = pgEnum('TipoNoChatbot', [
   'INICIO',
   'MENSAGEM',
   'PERGUNTA',
+  'MENU',
   'CONDICAO',
-  'DELAY',
+  'TRANSFERIR',
   'WEBHOOK',
-  'ATRIBUIR_TAG',
-  'TRANSFERIR_HUMANO',
+  'ESPERAR',
+  'ACAO',
   'FIM',
 ]);
 

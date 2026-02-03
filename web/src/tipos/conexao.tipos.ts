@@ -62,3 +62,40 @@ export interface FiltrosCanalConexao {
   status?: StatusCanalConexao;
   ativa?: boolean;
 }
+
+// =============================================================================
+// Tipos Estendidos - Detalhes Completos
+// =============================================================================
+
+export interface CanalConexaoDetalhada extends CanalConexao {
+  totalConversas?: number;
+  totalMensagensAgendadas?: number;
+  configuracoes?: ConfiguracoesConexao;
+  credenciais?: CredenciaisConexao;
+}
+
+export interface ConfiguracoesConexao {
+  webhookUrl?: string;
+  mensagemBoasVindas?: string;
+  horarioAtendimento?: {
+    inicio: string;
+    fim: string;
+    diasSemana: number[];
+  };
+}
+
+export interface CredenciaisConexao {
+  token?: string;
+  phoneNumberId?: string;
+  apiKey?: string;
+  // Credenciais sempre vêm mascaradas do backend
+}
+
+export interface MetricasConexoes {
+  total: number;
+  conectadas: number;
+  desconectadas: number;
+  comErro: number;
+  aguardandoQR: number;
+  totalConversasAtivas: number;
+}

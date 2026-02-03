@@ -64,3 +64,9 @@ export type {
   StateConfig,
   TransitionConfig,
 } from './motor-fluxo.servico.js';
+
+// Executor de Fluxo
+export { executorFluxo } from './executor-fluxo.servico.js';
+
+// Gateway de Integração
+export { chatbotGateway } from './chatbot.gateway.js';

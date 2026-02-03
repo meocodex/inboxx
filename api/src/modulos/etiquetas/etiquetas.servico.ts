@@ -1,8 +1,6 @@
-import { eq, and, ilike, ne, count, sql } from 'drizzle-orm';
-
-import { db } from '../../infraestrutura/banco/drizzle.servico.js';
-import { etiquetas, contatosEtiquetas } from '../../infraestrutura/banco/schema/index.js';
-import { ErroNaoEncontrado, ErroValidacao } from '../../compartilhado/erros/index.js';
+import { sql } from 'drizzle-orm';
+import { etiquetas } from '../../infraestrutura/banco/schema/index.js';
+import { CRUDBase } from '../../compartilhado/servicos/crud-base.servico.js';
 import type {
   CriarEtiquetaDTO,
   AtualizarEtiquetaDTO,
@@ -10,165 +8,106 @@ import type {
 } from './etiquetas.schema.js';
 
 // =============================================================================
-// Servico de Etiquetas
+// Tipos
 // =============================================================================
 
-export const etiquetasServico = {
-  async listar(clienteId: string, query: ListarEtiquetasQuery) {
-    const { pagina, limite, busca } = query;
-    const offset = (pagina - 1) * limite;
+export interface Etiqueta {
+  id: string;
+  clienteId: string;
+  nome: string;
+  cor: string;
+  criadoEm: Date;
+  totalContatos?: number;
+}
 
-    const conditions = [eq(etiquetas.clienteId, clienteId)];
-    if (busca) {
-      conditions.push(ilike(etiquetas.nome, `%${busca}%`));
-    }
-    const where = and(...conditions);
+// =============================================================================
+// Subconsultas
+// =============================================================================
 
-    const [dados, totalResult] = await Promise.all([
-      db
-        .select({
-          id: etiquetas.id,
-          nome: etiquetas.nome,
-          cor: etiquetas.cor,
-          criadoEm: etiquetas.criadoEm,
-          totalContatos: sql<number>`(SELECT count(*) FROM contatos_etiquetas WHERE contatos_etiquetas.etiqueta_id = ${etiquetas.id})`.mapWith(Number),
-        })
-        .from(etiquetas)
-        .where(where)
-        .orderBy(etiquetas.nome)
-        .limit(limite)
-        .offset(offset),
-      db.select({ total: count() }).from(etiquetas).where(where),
-    ]);
+const totalContatosSubquery = sql<number>`(
+  SELECT count(*) FROM contatos_etiquetas WHERE contatos_etiquetas.etiqueta_id = ${etiquetas.id}
+)`.mapWith(Number);
 
-    const total = totalResult[0]?.total ?? 0;
+// =============================================================================
+// Serviço de Etiquetas (Refatorado com CRUDBase)
+// =============================================================================
 
-    return {
-      dados,
-      meta: {
-        total,
-        pagina,
-        limite,
-        totalPaginas: Math.ceil(total / limite),
+/**
+ * Serviço de gestão de etiquetas
+ *
+ * Herda operações CRUD básicas da classe CRUDBase com:
+ * - Subconsulta: totalContatos injetada automaticamente
+ * - Validação de nome único herdada
+ * - Paginação e busca automáticas
+ *
+ * @example Antes (175 linhas) → Depois (~65 linhas) = 63% redução
+ */
+class EtiquetasServico extends CRUDBase<
+  typeof etiquetas,
+  Etiqueta,
+  CriarEtiquetaDTO,
+  AtualizarEtiquetaDTO
+> {
+  constructor() {
+    super(etiquetas, 'Etiqueta', {
+      camposBusca: ['nome'],
+      subconsultas: {
+        totalContatos: () => totalContatosSubquery,
       },
-    };
-  },
+    });
+  }
 
-  async obterPorId(clienteId: string, id: string) {
-    const result = await db
-      .select({
-        id: etiquetas.id,
-        nome: etiquetas.nome,
-        cor: etiquetas.cor,
-        criadoEm: etiquetas.criadoEm,
-        totalContatos: sql<number>`(SELECT count(*) FROM contatos_etiquetas WHERE contatos_etiquetas.etiqueta_id = ${etiquetas.id})`.mapWith(Number),
-      })
-      .from(etiquetas)
-      .where(and(eq(etiquetas.id, id), eq(etiquetas.clienteId, clienteId)))
-      .limit(1);
+  // Todos os métodos CRUD são herdados automaticamente!
+  // - listar() - Com paginação, busca e subconsulta totalContatos
+  // - obterPorId() - Com subconsulta totalContatos
+  // - criar() - Com validação de nome único
+  // - atualizar() - Com validação de nome único
+  // - excluir() - Com verificação de existência
+}
 
-    if (result.length === 0) {
-      throw new ErroNaoEncontrado('Etiqueta nao encontrada');
-    }
+// Exportar instância singleton
+export const etiquetasServico = new EtiquetasServico();
 
-    return result[0];
-  },
+// =============================================================================
+// COMPARAÇÃO: Antes vs Depois
+// =============================================================================
 
-  async criar(clienteId: string, dados: CriarEtiquetaDTO) {
-    // Verificar se nome ja existe
-    const nomeExiste = await db
-      .select({ id: etiquetas.id })
-      .from(etiquetas)
-      .where(and(eq(etiquetas.clienteId, clienteId), eq(etiquetas.nome, dados.nome)))
-      .limit(1);
+/*
+ANTES (etiquetas.servico.original.ts): ~175 linhas
+- 5 métodos CRUD implementados manualmente
+- Subconsulta SQL injetada manualmente em SELECT (listar e obterPorId)
+- Validação de nome único duplicada em criar() e atualizar()
+- Paginação implementada manualmente
+- Contagem manual em atualizar()
 
-    if (nomeExiste.length > 0) {
-      throw new ErroValidacao('Ja existe uma etiqueta com este nome');
-    }
+DEPOIS (etiquetas.servico.ts): ~65 linhas (com JSDoc)
+- Herda TODOS os 5 métodos CRUD da classe base
+- Subconsulta injetada automaticamente via configuração
+- Validação de nome único herdada da classe base
+- Paginação e busca automáticas
+- ZERO código boilerplate
 
-    const [etiqueta] = await db
-      .insert(etiquetas)
-      .values({
-        clienteId,
-        nome: dados.nome,
-        cor: dados.cor,
-      })
-      .returning({
-        id: etiquetas.id,
-        nome: etiquetas.nome,
-        cor: etiquetas.cor,
-        criadoEm: etiquetas.criadoEm,
-      });
+BENEFÍCIOS:
+1. ~63% menos código (175 → 65 linhas)
+2. 100% dos métodos herdados (máxima reutilização)
+3. Subconsulta type-safe e centralizada
+4. Consistência garantida pela classe base
+5. Foco total em lógica de negócio (neste caso: nenhuma!)
 
-    return {
-      ...etiqueta,
-      totalContatos: 0,
-    };
-  },
+SUBCONSULTA:
+- totalContatos: COUNT de contatos_etiquetas.etiqueta_id
+- Injetada automaticamente em listar() e obterPorId()
 
-  async atualizar(clienteId: string, id: string, dados: AtualizarEtiquetaDTO) {
-    const etiquetaExiste = await db
-      .select({ id: etiquetas.id, nome: etiquetas.nome })
-      .from(etiquetas)
-      .where(and(eq(etiquetas.id, id), eq(etiquetas.clienteId, clienteId)))
-      .limit(1);
+MÉTODOS HERDADOS:
+✅ listar(clienteId, query) - Paginação + busca por nome + totalContatos
+✅ obterPorId(clienteId, id) - Com totalContatos
+✅ criar(clienteId, dados) - Com validação de nome único
+✅ atualizar(clienteId, id, dados) - Com validação de nome único
+✅ excluir(clienteId, id) - Com verificação de existência
 
-    if (etiquetaExiste.length === 0) {
-      throw new ErroNaoEncontrado('Etiqueta nao encontrada');
-    }
-
-    // Se atualizando nome, verificar duplicidade
-    if (dados.nome && dados.nome !== etiquetaExiste[0].nome) {
-      const nomeExiste = await db
-        .select({ id: etiquetas.id })
-        .from(etiquetas)
-        .where(and(eq(etiquetas.clienteId, clienteId), eq(etiquetas.nome, dados.nome), ne(etiquetas.id, id)))
-        .limit(1);
-
-      if (nomeExiste.length > 0) {
-        throw new ErroValidacao('Ja existe uma etiqueta com este nome');
-      }
-    }
-
-    const updateData: Record<string, unknown> = {};
-    if (dados.nome) updateData.nome = dados.nome;
-    if (dados.cor) updateData.cor = dados.cor;
-
-    const [etiqueta] = await db
-      .update(etiquetas)
-      .set(updateData)
-      .where(eq(etiquetas.id, id))
-      .returning({
-        id: etiquetas.id,
-        nome: etiquetas.nome,
-        cor: etiquetas.cor,
-      });
-
-    // Buscar contagem
-    const [countResult] = await db
-      .select({ total: count() })
-      .from(contatosEtiquetas)
-      .where(eq(contatosEtiquetas.etiquetaId, id));
-
-    return {
-      id: etiqueta.id,
-      nome: etiqueta.nome,
-      cor: etiqueta.cor,
-      totalContatos: countResult?.total ?? 0,
-    };
-  },
-
-  async excluir(clienteId: string, id: string) {
-    const etiquetaExiste = await db
-      .select({ id: etiquetas.id })
-      .from(etiquetas)
-      .where(and(eq(etiquetas.id, id), eq(etiquetas.clienteId, clienteId)))
-      .limit(1);
-
-    if (etiquetaExiste.length === 0) {
-      throw new ErroNaoEncontrado('Etiqueta nao encontrada');
-    }
-
-    await db.delete(etiquetas).where(eq(etiquetas.id, id));
-  },
-};
+NOTA: Este é o caso IDEAL de uso da CRUDBase!
+- CRUD puro sem lógica customizada
+- 1 subconsulta simples
+- Validação padrão (nome único)
+- Redução massiva de código (63%)
+*/

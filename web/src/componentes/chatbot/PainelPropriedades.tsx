@@ -52,6 +52,43 @@ const schemaMenu = schemaBase.extend({
   }),
 });
 
+const schemaCondicao = schemaBase.extend({
+  configuracao: z.object({
+    campo: z.string().min(1, 'Campo obrigatorio'),
+    operador: z.enum(['igual', 'diferente', 'contem', 'maior', 'menor']),
+    valor: z.string().min(1, 'Valor obrigatorio'),
+  }),
+});
+
+const schemaTransferir = schemaBase.extend({
+  configuracao: z.object({
+    equipeId: z.string().min(1, 'Equipe obrigatoria'),
+    usuarioId: z.string().optional(),
+  }),
+});
+
+const schemaWebhook = schemaBase.extend({
+  configuracao: z.object({
+    url: z.string().url('URL invalida'),
+    metodo: z.enum(['GET', 'POST', 'PUT', 'PATCH']),
+    headers: z.string().optional(),
+    corpo: z.string().optional(),
+  }),
+});
+
+const schemaEsperar = schemaBase.extend({
+  configuracao: z.object({
+    duracao: z.number().min(1, 'Minimo 1 segundo').max(86400, 'Maximo 24 horas'),
+  }),
+});
+
+const schemaAcao = schemaBase.extend({
+  configuracao: z.object({
+    tipo: z.enum(['adicionar_etiqueta', 'atualizar_campo', 'alterar_status_conversa']),
+    parametros: z.record(z.unknown()),
+  }),
+});
+
 // =============================================================================
 // Props
 // =============================================================================
@@ -307,6 +344,308 @@ function FormularioMenu({
   );
 }
 
+function FormularioCondicao({
+  dados,
+  onSalvar,
+}: {
+  dados: DadosNo;
+  onSalvar: (dados: Partial<DadosNo>) => void;
+}) {
+  const form = useForm({
+    resolver: zodResolver(schemaCondicao),
+    defaultValues: {
+      nome: dados.nome,
+      configuracao: {
+        campo: (dados.configuracao?.campo as string) || '',
+        operador: (dados.configuracao?.operador as string) || 'igual',
+        valor: (dados.configuracao?.valor as string) || '',
+      },
+    },
+  });
+
+  useEffect(() => {
+    form.reset({
+      nome: dados.nome,
+      configuracao: {
+        campo: (dados.configuracao?.campo as string) || '',
+        operador: (dados.configuracao?.operador as string) || 'igual',
+        valor: (dados.configuracao?.valor as string) || '',
+      },
+    });
+  }, [dados, form]);
+
+  const handleSubmit = form.handleSubmit((values) => {
+    onSalvar(values);
+  });
+
+  return (
+    <form onChange={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="nome">Nome do no</Label>
+        <Input id="nome" {...form.register('nome')} className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor="campo">Campo (variavel)</Label>
+        <Input id="campo" {...form.register('configuracao.campo')} placeholder="Ex: nome_usuario" className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor="operador">Operador</Label>
+        <Select {...form.register('configuracao.operador')}>
+          <SelectTrigger className="mt-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="igual">Igual a</SelectItem>
+            <SelectItem value="diferente">Diferente de</SelectItem>
+            <SelectItem value="contem">Contém</SelectItem>
+            <SelectItem value="maior">Maior que</SelectItem>
+            <SelectItem value="menor">Menor que</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="valor">Valor</Label>
+        <Input id="valor" {...form.register('configuracao.valor')} placeholder="Ex: João" className="mt-1" />
+      </div>
+    </form>
+  );
+}
+
+function FormularioTransferir({
+  dados,
+  onSalvar,
+}: {
+  dados: DadosNo;
+  onSalvar: (dados: Partial<DadosNo>) => void;
+}) {
+  const form = useForm({
+    resolver: zodResolver(schemaTransferir),
+    defaultValues: {
+      nome: dados.nome,
+      configuracao: {
+        equipeId: (dados.configuracao?.equipeId as string) || '',
+        usuarioId: (dados.configuracao?.usuarioId as string) || '',
+      },
+    },
+  });
+
+  useEffect(() => {
+    form.reset({
+      nome: dados.nome,
+      configuracao: {
+        equipeId: (dados.configuracao?.equipeId as string) || '',
+        usuarioId: (dados.configuracao?.usuarioId as string) || '',
+      },
+    });
+  }, [dados, form]);
+
+  const handleSubmit = form.handleSubmit((values) => {
+    onSalvar(values);
+  });
+
+  return (
+    <form onChange={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="nome">Nome do no</Label>
+        <Input id="nome" {...form.register('nome')} className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor="equipeId">ID da Equipe</Label>
+        <Input id="equipeId" {...form.register('configuracao.equipeId')} placeholder="UUID da equipe" className="mt-1" />
+        <p className="text-xs text-muted-foreground mt-1">Obtenha o ID da equipe na listagem de equipes</p>
+      </div>
+      <div>
+        <Label htmlFor="usuarioId">ID do Usuario (opcional)</Label>
+        <Input id="usuarioId" {...form.register('configuracao.usuarioId')} placeholder="UUID do usuario" className="mt-1" />
+        <p className="text-xs text-muted-foreground mt-1">Deixe vazio para atribuir a qualquer agente da equipe</p>
+      </div>
+    </form>
+  );
+}
+
+function FormularioWebhook({
+  dados,
+  onSalvar,
+}: {
+  dados: DadosNo;
+  onSalvar: (dados: Partial<DadosNo>) => void;
+}) {
+  const form = useForm({
+    resolver: zodResolver(schemaWebhook),
+    defaultValues: {
+      nome: dados.nome,
+      configuracao: {
+        url: (dados.configuracao?.url as string) || '',
+        metodo: (dados.configuracao?.metodo as string) || 'POST',
+        headers: (dados.configuracao?.headers as string) || '',
+        corpo: (dados.configuracao?.corpo as string) || '',
+      },
+    },
+  });
+
+  useEffect(() => {
+    form.reset({
+      nome: dados.nome,
+      configuracao: {
+        url: (dados.configuracao?.url as string) || '',
+        metodo: (dados.configuracao?.metodo as string) || 'POST',
+        headers: (dados.configuracao?.headers as string) || '',
+        corpo: (dados.configuracao?.corpo as string) || '',
+      },
+    });
+  }, [dados, form]);
+
+  const handleSubmit = form.handleSubmit((values) => {
+    onSalvar(values);
+  });
+
+  return (
+    <form onChange={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="nome">Nome do no</Label>
+        <Input id="nome" {...form.register('nome')} className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor="url">URL</Label>
+        <Input id="url" {...form.register('configuracao.url')} placeholder="https://api.exemplo.com/webhook" className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor="metodo">Metodo HTTP</Label>
+        <Select {...form.register('configuracao.metodo')}>
+          <SelectTrigger className="mt-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="GET">GET</SelectItem>
+            <SelectItem value="POST">POST</SelectItem>
+            <SelectItem value="PUT">PUT</SelectItem>
+            <SelectItem value="PATCH">PATCH</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="headers">Headers (JSON)</Label>
+        <Textarea id="headers" {...form.register('configuracao.headers')} placeholder='{"Authorization": "Bearer token"}' className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor="corpo">Corpo (JSON)</Label>
+        <Textarea id="corpo" {...form.register('configuracao.corpo')} placeholder='{"campo": "valor"}' className="mt-1" />
+      </div>
+    </form>
+  );
+}
+
+function FormularioEsperar({
+  dados,
+  onSalvar,
+}: {
+  dados: DadosNo;
+  onSalvar: (dados: Partial<DadosNo>) => void;
+}) {
+  const form = useForm({
+    resolver: zodResolver(schemaEsperar),
+    defaultValues: {
+      nome: dados.nome,
+      configuracao: {
+        duracao: (dados.configuracao?.duracao as number) || 60,
+      },
+    },
+  });
+
+  useEffect(() => {
+    form.reset({
+      nome: dados.nome,
+      configuracao: {
+        duracao: (dados.configuracao?.duracao as number) || 60,
+      },
+    });
+  }, [dados, form]);
+
+  const handleSubmit = form.handleSubmit((values) => {
+    onSalvar(values);
+  });
+
+  return (
+    <form onChange={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="nome">Nome do no</Label>
+        <Input id="nome" {...form.register('nome')} className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor="duracao">Duracao (segundos)</Label>
+        <Input id="duracao" type="number" {...form.register('configuracao.duracao', { valueAsNumber: true })} placeholder="60" className="mt-1" />
+        <p className="text-xs text-muted-foreground mt-1">60s = 1min, 3600s = 1h</p>
+      </div>
+    </form>
+  );
+}
+
+function FormularioAcao({
+  dados,
+  onSalvar,
+}: {
+  dados: DadosNo;
+  onSalvar: (dados: Partial<DadosNo>) => void;
+}) {
+  const form = useForm({
+    resolver: zodResolver(schemaAcao),
+    defaultValues: {
+      nome: dados.nome,
+      configuracao: {
+        tipo: (dados.configuracao?.tipo as string) || 'adicionar_etiqueta',
+        parametros: (dados.configuracao?.parametros as Record<string, unknown>) || {},
+      },
+    },
+  });
+
+  useEffect(() => {
+    form.reset({
+      nome: dados.nome,
+      configuracao: {
+        tipo: (dados.configuracao?.tipo as string) || 'adicionar_etiqueta',
+        parametros: (dados.configuracao?.parametros as Record<string, unknown>) || {},
+      },
+    });
+  }, [dados, form]);
+
+  const handleSubmit = form.handleSubmit((values) => {
+    onSalvar(values);
+  });
+
+  return (
+    <form onChange={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="nome">Nome do no</Label>
+        <Input id="nome" {...form.register('nome')} className="mt-1" />
+      </div>
+      <div>
+        <Label htmlFor="tipo">Tipo de Acao</Label>
+        <Select {...form.register('configuracao.tipo')}>
+          <SelectTrigger className="mt-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="adicionar_etiqueta">Adicionar Etiqueta</SelectItem>
+            <SelectItem value="atualizar_campo">Atualizar Campo</SelectItem>
+            <SelectItem value="alterar_status_conversa">Alterar Status da Conversa</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label>Parametros (JSON)</Label>
+        <Textarea
+          placeholder='{"etiquetaId": "uuid-da-etiqueta"}'
+          className="mt-1 font-mono text-xs"
+          rows={4}
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Configure os parametros conforme o tipo de acao escolhido
+        </p>
+      </div>
+    </form>
+  );
+}
+
 function FormularioBase({
   dados,
   onSalvar,
@@ -383,6 +722,16 @@ function PainelPropriedadesBase({
         return <FormularioPergunta dados={no.data} onSalvar={handleSalvar} />;
       case 'MENU':
         return <FormularioMenu dados={no.data} onSalvar={handleSalvar} />;
+      case 'CONDICAO':
+        return <FormularioCondicao dados={no.data} onSalvar={handleSalvar} />;
+      case 'TRANSFERIR':
+        return <FormularioTransferir dados={no.data} onSalvar={handleSalvar} />;
+      case 'WEBHOOK':
+        return <FormularioWebhook dados={no.data} onSalvar={handleSalvar} />;
+      case 'ESPERAR':
+        return <FormularioEsperar dados={no.data} onSalvar={handleSalvar} />;
+      case 'ACAO':
+        return <FormularioAcao dados={no.data} onSalvar={handleSalvar} />;
       default:
         return <FormularioBase dados={no.data} onSalvar={handleSalvar} />;
     }

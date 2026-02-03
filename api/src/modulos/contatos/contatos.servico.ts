@@ -446,6 +446,50 @@ export const contatosServico = {
     // Invalidar cache (etiquetas fazem parte do cache do contato)
     await invalidarCacheContato(contatoId);
 
+    // ========================================================================
+    // HOOK: Verificar gatilho ETIQUETA do chatbot
+    // ========================================================================
+    try {
+      const { chatbotGateway } = await import('../chatbot/chatbot.gateway.js');
+      const { fluxosChatbot } = await import('../../infraestrutura/banco/schema/index.js');
+      const { sql } = await import('drizzle-orm');
+
+      // Buscar fluxo com gatilho ETIQUETA que inclui esta etiqueta
+      const fluxo = await db.query.fluxosChatbot.findFirst({
+        where: and(
+          eq(fluxosChatbot.clienteId, clienteId),
+          eq(fluxosChatbot.ativo, true),
+          sql`${fluxosChatbot.gatilho}->>'tipo' = 'ETIQUETA'`,
+          sql`${fluxosChatbot.gatilho}->>'etiquetaId' = ${etiquetaId}`
+        ),
+      });
+
+      if (fluxo) {
+        // Buscar conversa ativa do contato
+        const conversaAtiva = await db.query.conversas.findFirst({
+          where: and(
+            eq(conversas.contatoId, contatoId),
+            eq(conversas.clienteId, clienteId),
+            eq(conversas.status, 'ABERTA')
+          ),
+          orderBy: (conversas, { desc }) => [desc(conversas.criadoEm)],
+        });
+
+        if (conversaAtiva) {
+          await chatbotGateway.iniciarFluxoPorGatilho(
+            conversaAtiva.id,
+            contatoId,
+            clienteId,
+            'ETIQUETA'
+          );
+          logger.info({ contatoId, etiquetaId, fluxoId: fluxo.id }, 'Fluxo iniciado por gatilho ETIQUETA');
+        }
+      }
+    } catch (erro) {
+      // Não quebrar o fluxo principal se o chatbot falhar
+      logger.error({ erro, contatoId, etiquetaId }, 'Erro ao processar gatilho ETIQUETA do chatbot');
+    }
+
     return { mensagem: 'Etiqueta adicionada com sucesso' };
   },
 

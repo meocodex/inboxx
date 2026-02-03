@@ -17,6 +17,7 @@ export * from './contatos.js';
 export * from './conversas.js';
 export * from './conversas-mensagens.js';
 export * from './chatbot.js';
+export * from './execucoes-fluxo.js';
 export * from './respostas-rapidas.js';
 export * from './campanhas.js';
 export * from './kanban.js';

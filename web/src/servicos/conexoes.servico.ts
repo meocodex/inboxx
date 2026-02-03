@@ -70,4 +70,28 @@ export const conexoesServico = {
   async atualizarStatus(id: string, ativo: boolean): Promise<void> {
     await api.patch(`/conexoes/${id}/status`, { ativo });
   },
+
+  // ---------------------------------------------------------------------------
+  // Obter QR Code (UaiZap)
+  // ---------------------------------------------------------------------------
+  async obterQRCode(id: string): Promise<{ qrcode: string | null }> {
+    const response = await api.get<RespostaApi<{ qrcode: string | null }>>(`/conexoes/${id}/qrcode`);
+    return response.data.dados;
+  },
+
+  // ---------------------------------------------------------------------------
+  // Reconectar (UaiZap)
+  // ---------------------------------------------------------------------------
+  async reconectar(id: string): Promise<RespostaApi<void>> {
+    const response = await api.post<RespostaApi<void>>(`/conexoes/${id}/reconectar`);
+    return response.data;
+  },
+
+  // ---------------------------------------------------------------------------
+  // Desconectar (UaiZap)
+  // ---------------------------------------------------------------------------
+  async desconectar(id: string): Promise<RespostaApi<void>> {
+    const response = await api.post<RespostaApi<void>>(`/conexoes/${id}/desconectar`);
+    return response.data;
+  },
 };

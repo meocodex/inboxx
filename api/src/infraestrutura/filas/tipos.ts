@@ -9,6 +9,7 @@ export type NomeJob =
   | 'lembrete.enviar'
   | 'webhook.retry'
   | 'busca.sincronizar'
+  | 'chatbot.esperar'
   | 'dlq.processar';
 
 // =============================================================================
@@ -65,6 +66,11 @@ export interface JobBuscaSincronizar {
   documentoId?: string;
 }
 
+export interface JobChatbotEsperar {
+  execucaoId: string;
+  evento: string;
+}
+
 export interface JobDlqProcessar {
   origem: string;
   jobOriginal: Record<string, unknown>;
@@ -84,6 +90,7 @@ export interface JobPayloads {
   'lembrete.enviar': JobLembrete;
   'webhook.retry': JobWebhookRetry;
   'busca.sincronizar': JobBuscaSincronizar;
+  'chatbot.esperar': JobChatbotEsperar;
   'dlq.processar': JobDlqProcessar;
 }
 

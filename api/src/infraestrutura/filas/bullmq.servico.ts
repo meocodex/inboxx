@@ -32,6 +32,7 @@ const NOMES_FILAS: NomeJob[] = [
   'lembrete.enviar',
   'webhook.retry',
   'busca.sincronizar',
+  'chatbot.esperar',
 ];
 
 // =============================================================================

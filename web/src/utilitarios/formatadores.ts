@@ -2,6 +2,9 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function formatarData(data: string | Date, formato = 'dd/MM/yyyy'): string {
+  if (formato === 'relative') {
+    return formatDistanceToNow(new Date(data), { addSuffix: true, locale: ptBR });
+  }
   return format(new Date(data), formato, { locale: ptBR });
 }
 

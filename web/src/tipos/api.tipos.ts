@@ -16,10 +16,10 @@ export interface RespostaErro {
 export interface RespostaPaginada<T> {
   sucesso: boolean;
   dados: T[];
-  paginacao: Paginacao;
+  meta: MetaPaginacao;
 }
 
-export interface Paginacao {
+export interface MetaPaginacao {
   pagina: number;
   limite: number;
   total: number;

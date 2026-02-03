@@ -1,9 +1,10 @@
-import { eq, and, notInArray, like } from 'drizzle-orm';
+import { eq, and, notInArray, like, count } from 'drizzle-orm';
 
 import { db } from '../../../../infraestrutura/banco/drizzle.servico.js';
 import { contatos, conversas, mensagens } from '../../../../infraestrutura/banco/schema/index.js';
 import { logger } from '../../../../compartilhado/utilitarios/logger.js';
 import { emitirParaConversa, emitirParaCliente } from '../../../../websocket/socket.gateway.js';
+import { chatbotGateway } from '../../../chatbot/chatbot.gateway.js';
 import type {
   MetaMensagemRecebida,
   MetaWebhookValue,
@@ -193,6 +194,36 @@ async function processarMensagemMetaIndividual(
     { mensagemId: mensagem.id, conversaId: conversa.id, tipo },
     'Webhook: Mensagem processada'
   );
+
+  // ============================================================================
+  // INTEGRAÇÃO CHATBOT
+  // ============================================================================
+
+  // Verificar se é mensagem de texto (chatbot só processa texto por enquanto)
+  if (tipo === 'TEXTO' && conteudo) {
+    try {
+      // Contar total de mensagens da conversa (para detectar primeira mensagem)
+      const [{ total }] = await db
+        .select({ total: count() })
+        .from(mensagens)
+        .where(eq(mensagens.conversaId, conversa.id));
+
+      if (total === 1) {
+        // É a primeira mensagem da conversa - verificar gatilho PRIMEIRA_MENSAGEM
+        logger.debug(
+          { conversaId: conversa.id },
+          'Primeira mensagem da conversa - verificando gatilho'
+        );
+        await chatbotGateway.iniciarFluxoPorGatilho(conversa.id, contatoDB.id, clienteId, 'PRIMEIRA_MENSAGEM');
+      } else {
+        // Mensagem subsequente - processar no chatbot (verifica palavra-chave ou execução ativa)
+        await chatbotGateway.processar(conversa.id, clienteId, conteudo);
+      }
+    } catch (erroChatbot) {
+      // Não quebrar o processamento da mensagem se o chatbot falhar
+      logger.error({ erro: erroChatbot, conversaId: conversa.id }, 'Erro ao processar chatbot');
+    }
+  }
 }
 
 // =============================================================================

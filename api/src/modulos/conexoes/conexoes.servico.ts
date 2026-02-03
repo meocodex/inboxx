@@ -2,6 +2,9 @@ import { eq, and, ilike, ne, count, sql, desc } from 'drizzle-orm';
 import { db } from '../../infraestrutura/banco/drizzle.servico.js';
 import { conexoes, conversas, mensagensAgendadas } from '../../infraestrutura/banco/schema/index.js';
 import { ErroNaoEncontrado, ErroValidacao } from '../../compartilhado/erros/index.js';
+import { uaiZapAdmin } from '../whatsapp/provedores/uaizap-admin.servico.js';
+import { logger } from '../../compartilhado/utilitarios/logger.js';
+import { env } from '../../configuracao/ambiente.js';
 import type {
   CriarConexaoDTO,
   AtualizarConexaoDTO,
@@ -144,6 +147,54 @@ export const conexoesServico = {
       throw new ErroValidacao('Ja existe uma conexao com este nome');
     }
 
+    // Se provedor for UAIZAP, criar instância automaticamente
+    let credenciaisFinais = dados.credenciais;
+    let webhookUrl: string | undefined;
+
+    if (dados.provedor === 'UAIZAP' && env.UAIZAP_API_URL && env.UAIZAP_API_KEY) {
+      try {
+        // Gerar ID único para instância (baseado no nome + timestamp)
+        const instanciaId = `${dados.nome.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now()}`;
+
+        // URL do webhook para esta conexão
+        webhookUrl = `${env.HOST === '0.0.0.0' ? 'http://localhost' : 'https://seu-dominio.com'}:${env.PORT}/api/webhooks/uaizap`;
+
+        logger.info(
+          { instanciaId, nome: dados.nome },
+          'Criando instância UaiZap automaticamente'
+        );
+
+        // Criar instância no UaiZap
+        const instancia = await uaiZapAdmin.criarInstancia({
+          nome: dados.nome,
+          webhookUrl,
+        });
+
+        // Conectar instância (gerar QR Code)
+        const { qrcode } = await uaiZapAdmin.conectarInstancia(instancia.id);
+
+        // Atualizar credenciais com instanciaId
+        credenciaisFinais = {
+          ...(dados.credenciais || {}),
+          apiUrl: env.UAIZAP_API_URL,
+          apiKey: env.UAIZAP_API_KEY,
+          instanciaId: instancia.id,
+          webhookUrl,
+        } as any;
+
+        logger.info(
+          { instanciaId: instancia.id, qrcode: !!qrcode },
+          'Instância UaiZap criada com sucesso'
+        );
+      } catch (erro) {
+        logger.error(
+          { erro: erro instanceof Error ? erro.message : 'Erro desconhecido' },
+          'Erro ao criar instância UaiZap, prosseguindo sem credenciais automáticas'
+        );
+        // Continua sem instância - usuário pode configurar manualmente
+      }
+    }
+
     const [conexao] = await db
       .insert(conexoes)
       .values({
@@ -151,9 +202,9 @@ export const conexoesServico = {
         nome: dados.nome,
         canal: dados.canal,
         provedor: dados.provedor,
-        credenciais: dados.credenciais,
+        credenciais: credenciaisFinais,
         configuracoes: dados.configuracoes ?? null,
-        status: 'DESCONECTADO',
+        status: 'AGUARDANDO_QR',
       })
       .returning({
         id: conexoes.id,
@@ -233,6 +284,8 @@ export const conexoesServico = {
     const result = await db
       .select({
         id: conexoes.id,
+        provedor: conexoes.provedor,
+        credenciais: conexoes.credenciais,
       })
       .from(conexoes)
       .where(and(eq(conexoes.id, id), eq(conexoes.clienteId, clienteId)))
@@ -241,6 +294,8 @@ export const conexoesServico = {
     if (result.length === 0) {
       throw new ErroNaoEncontrado('Conexao nao encontrada');
     }
+
+    const conexao = result[0];
 
     const [countResult] = await db
       .select({ total: count() })
@@ -252,6 +307,34 @@ export const conexoesServico = {
         `Esta conexao possui ${countResult.total} conversa(s). ` +
           'Arquive ou exclua as conversas antes de excluir a conexao.'
       );
+    }
+
+    // Se provedor for UAIZAP, excluir instância também
+    if (conexao.provedor === 'UAIZAP' && env.UAIZAP_API_URL && env.UAIZAP_API_KEY) {
+      try {
+        const credenciais = conexao.credenciais as Record<string, string>;
+        const instanciaId = credenciais.instanciaId;
+
+        if (instanciaId) {
+          logger.info(
+            { instanciaId, conexaoId: id },
+            'Excluindo instância UaiZap'
+          );
+
+          await uaiZapAdmin.excluirInstancia(instanciaId);
+
+          logger.info(
+            { instanciaId },
+            'Instância UaiZap excluída com sucesso'
+          );
+        }
+      } catch (erro) {
+        logger.error(
+          { erro: erro instanceof Error ? erro.message : 'Erro desconhecido' },
+          'Erro ao excluir instância UaiZap, prosseguindo com exclusão da conexão'
+        );
+        // Continua com a exclusão mesmo se falhar
+      }
     }
 
     await db.delete(conexoes).where(eq(conexoes.id, id));
@@ -319,6 +402,84 @@ export const conexoesServico = {
       mensagem: sucesso ? 'Conexao testada com sucesso' : 'Falha ao testar conexao',
       status: sucesso ? 'CONECTADO' : 'ERRO',
     };
+  },
+
+  async obterQRCode(clienteId: string, id: string) {
+    const [conexao] = await db
+      .select()
+      .from(conexoes)
+      .where(and(eq(conexoes.id, id), eq(conexoes.clienteId, clienteId)))
+      .limit(1);
+
+    if (!conexao) {
+      throw new ErroNaoEncontrado('Conexao nao encontrada');
+    }
+
+    if (conexao.provedor !== 'UAIZAP') {
+      throw new ErroValidacao('Apenas conexoes UaiZap suportam QR Code');
+    }
+
+    // Instanciar provedor UaiZap
+    const { UaiZapProvedor } = await import('../whatsapp/provedores/uaizap.provedor.js');
+    const credenciais = conexao.credenciais as { apiUrl: string; apiKey: string; instanciaId: string };
+    const provedor = new UaiZapProvedor(credenciais);
+
+    const qrcode = await provedor.obterQRCode();
+    return { qrcode };
+  },
+
+  async reconectar(clienteId: string, id: string) {
+    const [conexao] = await db
+      .select()
+      .from(conexoes)
+      .where(and(eq(conexoes.id, id), eq(conexoes.clienteId, clienteId)))
+      .limit(1);
+
+    if (!conexao) {
+      throw new ErroNaoEncontrado('Conexao nao encontrada');
+    }
+
+    if (conexao.provedor !== 'UAIZAP') {
+      throw new ErroValidacao('Apenas conexoes UaiZap suportam reconexao');
+    }
+
+    await db
+      .update(conexoes)
+      .set({ status: sql`'AGUARDANDO_QR'::"StatusConexao"`, ultimoStatus: new Date() })
+      .where(eq(conexoes.id, id));
+
+    const { UaiZapProvedor } = await import('../whatsapp/provedores/uaizap.provedor.js');
+    const credenciais = conexao.credenciais as { apiUrl: string; apiKey: string; instanciaId: string };
+    const provedor = new UaiZapProvedor(credenciais);
+
+    await provedor.reiniciar();
+
+    return { sucesso: true, mensagem: 'Reconexao iniciada' };
+  },
+
+  async desconectar(clienteId: string, id: string) {
+    const [conexao] = await db
+      .select()
+      .from(conexoes)
+      .where(and(eq(conexoes.id, id), eq(conexoes.clienteId, clienteId)))
+      .limit(1);
+
+    if (!conexao) {
+      throw new ErroNaoEncontrado('Conexao nao encontrada');
+    }
+
+    await db
+      .update(conexoes)
+      .set({ status: 'DESCONECTADO', ultimoStatus: new Date() })
+      .where(eq(conexoes.id, id));
+
+    const { UaiZapProvedor } = await import('../whatsapp/provedores/uaizap.provedor.js');
+    const credenciais = conexao.credenciais as { apiUrl: string; apiKey: string; instanciaId: string };
+    const provedor = new UaiZapProvedor(credenciais);
+
+    await provedor.desconectar();
+
+    return { sucesso: true, mensagem: 'Desconectado com sucesso' };
   },
 };
 

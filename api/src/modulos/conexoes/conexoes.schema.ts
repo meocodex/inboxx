@@ -59,11 +59,16 @@ export const atualizarConexaoBodySchema = z.object({
   nome: z.string().min(2).max(100).optional(),
   credenciais: z
     .object({
+      // Meta Cloud API
       token: z.string().optional(),
       phoneNumberId: z.string().optional(),
       businessAccountId: z.string().optional(),
-      apiKey: z.string().optional(),
       webhookSecret: z.string().optional(),
+      // UaiZap
+      apiUrl: z.string().url().optional(),
+      apiKey: z.string().optional(),
+      instanciaId: z.string().optional(),
+      webhookUrl: z.string().url().optional(),
     })
     .optional(),
   configuracoes: z
