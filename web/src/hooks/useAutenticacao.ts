@@ -57,33 +57,3 @@ export function useAutenticacao() {
     limparErro,
   };
 }
-
-// =============================================================================
-// Hook de Proteção de Rota
-// =============================================================================
-
-export function useProtecaoRota() {
-  const navigate = useNavigate();
-  const { usuario, carregando, carregarUsuario } = useAutenticacaoStore();
-
-  useEffect(() => {
-    const verificar = async () => {
-      if (!estaAutenticado()) {
-        navigate('/entrar');
-        return;
-      }
-
-      if (!usuario && !carregando) {
-        try {
-          await carregarUsuario();
-        } catch {
-          navigate('/entrar');
-        }
-      }
-    };
-
-    verificar();
-  }, [usuario, carregando, carregarUsuario, navigate]);
-
-  return { usuario, carregando };
-}

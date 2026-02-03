@@ -1,7 +1,7 @@
-import { memo, useEffect, useState, useRef } from 'react';
+import { memo, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useUsuario, useCarregandoAuth, useAutenticacaoStore } from '@/stores';
-import { estaAutenticado, limparTokens } from '@/servicos/api';
+import { estaAutenticado } from '@/servicos/api';
 import { TooltipProvider } from '@/componentes/ui/tooltip';
 import { MenuLateral } from './MenuLateral';
 import { Carregando } from '@/componentes/comum/Carregando';
@@ -15,62 +15,38 @@ export const LayoutPrincipal = memo(() => {
   const usuario = useUsuario();
   const carregando = useCarregandoAuth();
   const carregarUsuario = useAutenticacaoStore((s) => s.carregarUsuario);
-  const [tentativas, setTentativas] = useState(0);
-  const tentativaRef = useRef(0);
 
   // ---------------------------------------------------------------------------
-  // Verificar autenticação ao montar
+  // Verificar autenticação apenas uma vez ao montar
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    // Se não tem token, redireciona para login
+    // Sem token = redireciona para login
     if (!estaAutenticado()) {
       navigate('/entrar', { replace: true });
       return;
     }
 
-    // Se já tem usuário, não precisa carregar
-    if (usuario) {
-      return;
-    }
-
-    // Se está carregando, aguarda
-    if (carregando) {
-      return;
-    }
-
-    // Tenta carregar usuário (máximo 3 tentativas)
-    if (tentativaRef.current < 3) {
-      tentativaRef.current += 1;
-      setTentativas(tentativaRef.current);
+    // Tem token mas não tem usuário = carrega do backend
+    // (Zustand pode já ter carregado do localStorage via persist)
+    if (!usuario && !carregando) {
       carregarUsuario();
-    } else {
-      // Após 3 tentativas sem sucesso, limpa e redireciona
-      limparTokens();
-      navigate('/entrar', { replace: true });
     }
-  }, [usuario, carregando, carregarUsuario, navigate, tentativas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Executa apenas uma vez ao montar
 
   // ---------------------------------------------------------------------------
-  // Timeout de segurança (10 segundos)
+  // Redireciona se perder autenticação
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (usuario) return; // Já tem usuário, não precisa timeout
-
-    const timeout = setTimeout(() => {
-      if (!usuario && estaAutenticado()) {
-        // Timeout mas ainda tem token - força logout
-        limparTokens();
-        navigate('/entrar', { replace: true });
-      }
-    }, 10000);
-
-    return () => clearTimeout(timeout);
-  }, [usuario, navigate]);
+    if (!estaAutenticado() && !carregando) {
+      navigate('/entrar', { replace: true });
+    }
+  }, [usuario, carregando, navigate]);
 
   // ---------------------------------------------------------------------------
-  // Loading
+  // Loading enquanto carrega
   // ---------------------------------------------------------------------------
-  if (carregando || !usuario) {
+  if (carregando) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Carregando tamanho="lg" texto="Carregando..." />
@@ -79,7 +55,18 @@ export const LayoutPrincipal = memo(() => {
   }
 
   // ---------------------------------------------------------------------------
-  // Render Layout Unificado
+  // Sem usuário após carregar = aguarda (Zustand vai popular)
+  // ---------------------------------------------------------------------------
+  if (!usuario) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Carregando tamanho="lg" texto="Verificando sessão..." />
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Autenticado com usuário = renderiza layout
   // ---------------------------------------------------------------------------
   return (
     <TooltipProvider>
@@ -92,4 +79,5 @@ export const LayoutPrincipal = memo(() => {
     </TooltipProvider>
   );
 });
+
 LayoutPrincipal.displayName = 'LayoutPrincipal';

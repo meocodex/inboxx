@@ -1,4 +1,4 @@
-export { useAutenticacao, useProtecaoRota } from './useAutenticacao';
+export { useAutenticacao } from './useAutenticacao';
 export { usePermissoes, PermissaoGuarda } from './usePermissoes';
 export { useToast } from './useToast';
 export {
