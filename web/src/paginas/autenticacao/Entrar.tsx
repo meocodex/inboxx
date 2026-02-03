@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,7 +26,6 @@ type LoginForm = z.infer<typeof loginSchema>;
 // =============================================================================
 
 export default function Entrar() {
-  const navigate = useNavigate();
   const { entrar, carregando, erro, limparErro } = useAutenticacao();
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erroLocal, setErroLocal] = useState<string | null>(null);
@@ -50,7 +48,7 @@ export default function Entrar() {
 
     try {
       await entrar(dados.email, dados.senha);
-      navigate('/');
+      // navigate('/') já é chamado pelo hook entrar()
     } catch (error) {
       setErroLocal(extrairMensagemErro(error));
     }

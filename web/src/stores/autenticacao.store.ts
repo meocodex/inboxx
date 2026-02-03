@@ -39,8 +39,17 @@ export const useAutenticacaoStore = create<EstadoAutenticacao>()(
 
         try {
           const resposta = await autenticacaoServico.entrar({ email, senha });
+
+          if (import.meta.env.DEV) {
+            console.log('[AUTH] Login bem-sucedido:', resposta.usuario.nome);
+          }
+
           set({ usuario: resposta.usuario, carregando: false });
         } catch (error) {
+          if (import.meta.env.DEV) {
+            console.error('[AUTH] Erro no login:', error);
+          }
+
           const mensagem =
             error instanceof Error ? error.message : 'Credenciais inválidas';
           set({ erro: mensagem, carregando: false });
@@ -67,18 +76,47 @@ export const useAutenticacaoStore = create<EstadoAutenticacao>()(
       // -------------------------------------------------------------------------
       carregarUsuario: async () => {
         if (!estaAutenticado()) {
+          if (import.meta.env.DEV) {
+            console.log('[AUTH] carregarUsuario: sem token, ignorando');
+          }
           set({ usuario: null, carregando: false });
           return;
+        }
+
+        if (import.meta.env.DEV) {
+          console.log('[AUTH] carregarUsuario: buscando usuário...');
         }
 
         set({ carregando: true });
 
         try {
           const usuario = await autenticacaoServico.obterUsuarioAtual();
+
+          if (import.meta.env.DEV) {
+            console.log('[AUTH] carregarUsuario: sucesso:', usuario.nome);
+          }
+
           set({ usuario, carregando: false });
-        } catch {
-          limparTokens();
-          set({ usuario: null, carregando: false });
+        } catch (erro) {
+          // Só limpar tokens se for erro 401 (não autorizado)
+          // Outros erros (rede, timeout) não devem deslogar o usuário
+          const isErro401 =
+            erro instanceof Error &&
+            'response' in erro &&
+            (erro as { response?: { status?: number } }).response?.status === 401;
+
+          if (import.meta.env.DEV) {
+            console.error('[AUTH] carregarUsuario: erro', { erro, isErro401 });
+          }
+
+          if (isErro401) {
+            limparTokens();
+            set({ usuario: null, carregando: false });
+          } else {
+            // Mantém o estado de carregando falso mas não limpa tokens
+            // Permite retry na próxima renderização
+            set({ carregando: false });
+          }
         }
       },
 
@@ -90,6 +128,11 @@ export const useAutenticacaoStore = create<EstadoAutenticacao>()(
     {
       name: 'crm-auth-storage',
       partialize: (state) => ({ usuario: state.usuario }),
+      onRehydrateStorage: () => (state) => {
+        if (import.meta.env.DEV) {
+          console.log('[AUTH] Rehydrate:', state?.usuario ? `usuário: ${state.usuario.nome}` : 'sem usuário');
+        }
+      },
     }
   )
 );

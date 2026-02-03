@@ -79,22 +79,36 @@ api.interceptors.response.use(
 const TOKEN_KEY = 'crm_access_token';
 const REFRESH_KEY = 'crm_refresh_token';
 
+// Usar localStorage para persistência entre sessões
+// sessionStorage é perdido ao fechar a aba
 export function obterToken(): string | null {
-  return sessionStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(TOKEN_KEY);
 }
 
 export function obterRefreshToken(): string | null {
-  return sessionStorage.getItem(REFRESH_KEY);
+  return localStorage.getItem(REFRESH_KEY);
 }
 
 export function salvarTokens(accessToken: string, refreshToken: string): void {
-  sessionStorage.setItem(TOKEN_KEY, accessToken);
-  sessionStorage.setItem(REFRESH_KEY, refreshToken);
+  try {
+    localStorage.setItem(TOKEN_KEY, accessToken);
+    localStorage.setItem(REFRESH_KEY, refreshToken);
+
+    // Verificar se foi salvo corretamente
+    const verificar = localStorage.getItem(TOKEN_KEY);
+    if (!verificar) {
+      console.error('[AUTH] Falha ao salvar token no localStorage');
+      throw new Error('LocalStorage bloqueado ou indisponível');
+    }
+  } catch (erro) {
+    console.error('[AUTH] Erro ao salvar tokens:', erro);
+    throw erro;
+  }
 }
 
 export function limparTokens(): void {
-  sessionStorage.removeItem(TOKEN_KEY);
-  sessionStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_KEY);
 }
 
 export function estaAutenticado(): boolean {

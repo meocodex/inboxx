@@ -1,7 +1,7 @@
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useState, useRef } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useUsuario, useCarregandoAuth, useAutenticacaoStore } from '@/stores';
-import { estaAutenticado } from '@/servicos/api';
+import { estaAutenticado, limparTokens } from '@/servicos/api';
 import { TooltipProvider } from '@/componentes/ui/tooltip';
 import { MenuLateral } from './MenuLateral';
 import { Carregando } from '@/componentes/comum/Carregando';
@@ -15,20 +15,57 @@ export const LayoutPrincipal = memo(() => {
   const usuario = useUsuario();
   const carregando = useCarregandoAuth();
   const carregarUsuario = useAutenticacaoStore((s) => s.carregarUsuario);
+  const [tentativas, setTentativas] = useState(0);
+  const tentativaRef = useRef(0);
 
   // ---------------------------------------------------------------------------
   // Verificar autenticação ao montar
   // ---------------------------------------------------------------------------
   useEffect(() => {
+    // Se não tem token, redireciona para login
     if (!estaAutenticado()) {
-      navigate('/entrar');
+      navigate('/entrar', { replace: true });
       return;
     }
 
-    if (!usuario && !carregando) {
-      carregarUsuario();
+    // Se já tem usuário, não precisa carregar
+    if (usuario) {
+      return;
     }
-  }, [usuario, carregando, carregarUsuario, navigate]);
+
+    // Se está carregando, aguarda
+    if (carregando) {
+      return;
+    }
+
+    // Tenta carregar usuário (máximo 3 tentativas)
+    if (tentativaRef.current < 3) {
+      tentativaRef.current += 1;
+      setTentativas(tentativaRef.current);
+      carregarUsuario();
+    } else {
+      // Após 3 tentativas sem sucesso, limpa e redireciona
+      limparTokens();
+      navigate('/entrar', { replace: true });
+    }
+  }, [usuario, carregando, carregarUsuario, navigate, tentativas]);
+
+  // ---------------------------------------------------------------------------
+  // Timeout de segurança (10 segundos)
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (usuario) return; // Já tem usuário, não precisa timeout
+
+    const timeout = setTimeout(() => {
+      if (!usuario && estaAutenticado()) {
+        // Timeout mas ainda tem token - força logout
+        limparTokens();
+        navigate('/entrar', { replace: true });
+      }
+    }, 10000);
+
+    return () => clearTimeout(timeout);
+  }, [usuario, navigate]);
 
   // ---------------------------------------------------------------------------
   // Loading
