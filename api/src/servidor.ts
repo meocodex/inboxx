@@ -90,13 +90,24 @@ export async function criarServidor(): Promise<FastifyInstance> {
   });
 
   await app.register(rateLimit, {
-    max: 100,
+    max: 500, // Aumentado de 100 para 500 requisições por minuto
     timeWindow: '1 minute',
-    errorResponseBuilder: () => ({
+    allowList: (request) => {
+      // Rotas de autenticação têm limite mais alto
+      if (request.url?.startsWith('/api/autenticacao/')) {
+        return true; // Sem limite para auth (já tem proteção de tentativas de login)
+      }
+      // Health check sem limite
+      if (request.url?.startsWith('/api/saude')) {
+        return true;
+      }
+      return false;
+    },
+    errorResponseBuilder: (_request, context) => ({
       sucesso: false,
       erro: {
         codigo: 'LIMITE_EXCEDIDO',
-        mensagem: 'Muitas requisicoes. Tente novamente em alguns minutos.',
+        mensagem: `Muitas requisicoes (${context.max}/min). Tente novamente em ${context.after}.`,
       },
     }),
   });

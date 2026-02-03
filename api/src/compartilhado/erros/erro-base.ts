@@ -42,15 +42,23 @@ export const tratadorErrosGlobal = (
   req: FastifyRequest,
   res: FastifyReply,
 ) => {
+  // Log detalhado para diagnóstico em produção
   req.log.error({
     err: {
       message: erro.message,
       stack: erro.stack,
       name: erro.name,
+      type: erro.constructor?.name,
     },
     url: req.url,
     method: req.method,
     ip: req.ip,
+    body: req.body,
+    headers: {
+      origin: req.headers.origin,
+      contentType: req.headers['content-type'],
+      userAgent: req.headers['user-agent']?.substring(0, 100),
+    },
   });
 
   if (erro instanceof ErroBase) {
