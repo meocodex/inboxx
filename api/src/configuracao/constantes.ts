@@ -4,8 +4,8 @@
 
 // Seguranca
 export const CUSTO_BCRYPT = 12;
-export const MAX_TENTATIVAS_LOGIN = 5;
-export const TEMPO_BLOQUEIO_LOGIN_MINUTOS = 15;
+export const MAX_TENTATIVAS_LOGIN = 10;
+export const TEMPO_BLOQUEIO_LOGIN_MINUTOS = 5;
 
 // Paginacao
 export const PAGINACAO_LIMITE_PADRAO = 20;

@@ -137,8 +137,8 @@ vi.mock('../infraestrutura/cache/redis.servico.js', () => ({
 
 vi.mock('../configuracao/constantes.js', () => ({
   CUSTO_BCRYPT: 12,
-  MAX_TENTATIVAS_LOGIN: 5,
-  TEMPO_BLOQUEIO_LOGIN_MINUTOS: 15,
+  MAX_TENTATIVAS_LOGIN: 10,
+  TEMPO_BLOQUEIO_LOGIN_MINUTOS: 5,
   PAGINACAO_LIMITE_PADRAO: 20,
   PAGINACAO_LIMITE_MAXIMO: 100,
   CACHE_TTL: {
