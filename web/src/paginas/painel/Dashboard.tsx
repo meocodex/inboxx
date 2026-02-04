@@ -18,14 +18,13 @@ import { formatarMoeda, formatarData } from '@/utilitarios/formatadores';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import { Badge } from '@/componentes/ui/badge';
 import {
-  SidebarSecundaria,
+  PageLayout,
   CabecalhoSidebar,
   SecaoSidebar,
   ItemSidebar,
   SeparadorSidebar,
-  CabecalhoPagina,
-  EstadoCarregando,
-  EstadoErro,
+  LoadingState,
+  EmptyState,
 } from '@/componentes/layout';
 import type { DashboardGeral, PontoGrafico, AtividadesRecentes } from '@/tipos';
 
@@ -125,101 +124,92 @@ export default function Dashboard() {
     queryFn: () => dashboardServico.obterAtividades(5),
   });
 
-  // Erro
-  if (erroDashboard) {
-    return (
-      <div className="flex h-full">
-        <div className="flex-1 flex items-center justify-center">
-          <EstadoErro
-            titulo="Erro ao carregar dashboard"
-            mensagem="Nao foi possivel carregar os dados do dashboard."
-            onTentarNovamente={() => recarregarDashboard()}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-full">
-      {/* Sidebar Secundaria - Filtros */}
-      <SidebarSecundaria largura="sm">
-        <CabecalhoSidebar
-          titulo="Dashboard"
-          subtitulo="Visao geral"
+    <PageLayout
+      titulo="Dashboard"
+      subtitulo="Visao geral do seu CRM"
+      icone={<LayoutDashboard className="h-5 w-5" />}
+      sidebarWidth="sm"
+      sidebar={
+        <>
+          <CabecalhoSidebar
+            titulo="Dashboard"
+            subtitulo="Visao geral"
+          />
+
+          <SecaoSidebar titulo="Periodo">
+            <ItemSidebar
+              icone={<Clock className="h-4 w-4" />}
+              label="Ultimos 7 dias"
+              ativo={filtroPeriodo === '7d'}
+              onClick={() => setFiltroPeriodo('7d')}
+            />
+            <ItemSidebar
+              icone={<Clock className="h-4 w-4" />}
+              label="Ultimos 15 dias"
+              ativo={filtroPeriodo === '15d'}
+              onClick={() => setFiltroPeriodo('15d')}
+            />
+            <ItemSidebar
+              icone={<CalendarDays className="h-4 w-4" />}
+              label="Ultimos 30 dias"
+              ativo={filtroPeriodo === '30d'}
+              onClick={() => setFiltroPeriodo('30d')}
+            />
+            <ItemSidebar
+              icone={<CalendarDays className="h-4 w-4" />}
+              label="Ultimos 90 dias"
+              ativo={filtroPeriodo === '90d'}
+              onClick={() => setFiltroPeriodo('90d')}
+            />
+          </SecaoSidebar>
+
+          <SeparadorSidebar />
+
+          <SecaoSidebar titulo="Modulos">
+            <ItemSidebar
+              icone={<MessageSquare className="h-4 w-4" />}
+              label="Conversas"
+              badge={dashboard?.conversas.abertas}
+            />
+            <ItemSidebar
+              icone={<Users className="h-4 w-4" />}
+              label="Contatos"
+              badge={dashboard?.contatos.total}
+            />
+            <ItemSidebar
+              icone={<Megaphone className="h-4 w-4" />}
+              label="Campanhas"
+              badge={dashboard?.campanhas.ativas}
+            />
+            <ItemSidebar
+              icone={<Kanban className="h-4 w-4" />}
+              label="Kanban"
+              badge={dashboard?.kanban.cartoes}
+            />
+            <ItemSidebar
+              icone={<Calendar className="h-4 w-4" />}
+              label="Agenda"
+              badge={dashboard?.agenda.compromissosHoje}
+            />
+          </SecaoSidebar>
+        </>
+      }
+    >
+      {/* Estados de loading/error */}
+      {erroDashboard ? (
+        <EmptyState
+          variant="error"
+          title="Erro ao carregar dashboard"
+          description="Não foi possível carregar os dados do dashboard."
+          primaryAction={{
+            label: 'Tentar novamente',
+            onClick: () => recarregarDashboard(),
+          }}
         />
-
-        <SecaoSidebar titulo="Periodo">
-          <ItemSidebar
-            icone={<Clock className="h-4 w-4" />}
-            label="Ultimos 7 dias"
-            ativo={filtroPeriodo === '7d'}
-            onClick={() => setFiltroPeriodo('7d')}
-          />
-          <ItemSidebar
-            icone={<Clock className="h-4 w-4" />}
-            label="Ultimos 15 dias"
-            ativo={filtroPeriodo === '15d'}
-            onClick={() => setFiltroPeriodo('15d')}
-          />
-          <ItemSidebar
-            icone={<CalendarDays className="h-4 w-4" />}
-            label="Ultimos 30 dias"
-            ativo={filtroPeriodo === '30d'}
-            onClick={() => setFiltroPeriodo('30d')}
-          />
-          <ItemSidebar
-            icone={<CalendarDays className="h-4 w-4" />}
-            label="Ultimos 90 dias"
-            ativo={filtroPeriodo === '90d'}
-            onClick={() => setFiltroPeriodo('90d')}
-          />
-        </SecaoSidebar>
-
-        <SeparadorSidebar />
-
-        <SecaoSidebar titulo="Modulos">
-          <ItemSidebar
-            icone={<MessageSquare className="h-4 w-4" />}
-            label="Conversas"
-            badge={dashboard?.conversas.abertas}
-          />
-          <ItemSidebar
-            icone={<Users className="h-4 w-4" />}
-            label="Contatos"
-            badge={dashboard?.contatos.total}
-          />
-          <ItemSidebar
-            icone={<Megaphone className="h-4 w-4" />}
-            label="Campanhas"
-            badge={dashboard?.campanhas.ativas}
-          />
-          <ItemSidebar
-            icone={<Kanban className="h-4 w-4" />}
-            label="Kanban"
-            badge={dashboard?.kanban.cartoes}
-          />
-          <ItemSidebar
-            icone={<Calendar className="h-4 w-4" />}
-            label="Agenda"
-            badge={dashboard?.agenda.compromissosHoje}
-          />
-        </SecaoSidebar>
-      </SidebarSecundaria>
-
-      {/* Conteudo Principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CabecalhoPagina
-          titulo="Dashboard"
-          subtitulo="Visao geral do seu CRM"
-          icone={<LayoutDashboard className="h-5 w-5" />}
-        />
-
-        {/* Area de Conteudo */}
-        <div className="flex-1 overflow-auto p-6">
-          {carregandoDashboard ? (
-            <EstadoCarregando texto="Carregando dashboard..." />
-          ) : dashboard ? (
+      ) : carregandoDashboard ? (
+        <LoadingState variant="page" text="Carregando dashboard..." />
+      ) : dashboard ? (
             <div className="space-y-6">
               {/* Cards de Metricas */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -270,7 +260,7 @@ export default function Dashboard() {
                   <CardContent>
                     {carregandoGrafico ? (
                       <div className="flex h-40 items-center justify-center">
-                        <EstadoCarregando />
+                        <LoadingState variant="spinner" size="md" />
                       </div>
                     ) : grafico && grafico.length > 0 ? (
                       <GraficoBarras dados={grafico} />
@@ -289,7 +279,7 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent>
                     {carregandoAtividades ? (
-                      <EstadoCarregando />
+                      <LoadingState variant="spinner" size="md" />
                     ) : atividades ? (
                       <div className="space-y-4">
                         {atividades.conversas.slice(0, 5).map((conversa) => (
@@ -321,8 +311,6 @@ export default function Dashboard() {
               </div>
             </div>
           ) : null}
-        </div>
-      </div>
-    </div>
+    </PageLayout>
   );
 }

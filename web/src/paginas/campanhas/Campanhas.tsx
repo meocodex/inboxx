@@ -28,17 +28,14 @@ import {
   DropdownMenuTrigger,
 } from '@/componentes/ui/dropdown-menu';
 import {
-  SidebarSecundaria,
+  PageLayout,
   CabecalhoSidebar,
   SecaoSidebar,
   ItemSidebar,
   BuscaSidebar,
-  CabecalhoPagina,
   GridCards,
-  EstadoVazio,
-  EstadoCarregando,
-  EstadoErro,
-  EstadoBuscaVazia,
+  EmptyState,
+  LoadingState,
 } from '@/componentes/layout';
 import type { Campanha, StatusCampanha } from '@/tipos';
 
@@ -240,22 +237,6 @@ export default function Campanhas() {
   });
 
   // ---------------------------------------------------------------------------
-  // Erro
-  // ---------------------------------------------------------------------------
-  if (erro) {
-    return (
-      <div className="flex h-full">
-        <div className="flex-1 flex items-center justify-center">
-          <EstadoErro
-            titulo="Erro ao carregar campanhas"
-            mensagem="Nao foi possivel carregar a lista"
-            onTentarNovamente={() => recarregar()}
-          />
-        </div>
-      </div>
-    );
-  }
-
   const campanhas = campanhasData?.dados || [];
 
   // Filtrar campanhas
@@ -277,29 +258,39 @@ export default function Campanhas() {
   };
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar Secundaria - Filtros */}
-      <SidebarSecundaria largura="sm">
-        <CabecalhoSidebar
-          titulo="Campanhas"
-          subtitulo={`${campanhas.length} campanhas`}
-        />
-
-        <BuscaSidebar
-          valor={busca}
-          onChange={setBusca}
-          placeholder="Buscar campanhas..."
-        />
-
-        <SecaoSidebar titulo="Status">
-          <ItemSidebar
-            icone={<Megaphone className="h-4 w-4" />}
-            label="Todas"
-            badge={contadores.todas}
-            ativo={filtroStatus === 'todas'}
-            onClick={() => setFiltroStatus('todas')}
+    <PageLayout
+      titulo="Campanhas"
+      subtitulo="Gerencie suas campanhas de envio em massa"
+      icone={<Megaphone className="h-5 w-5" />}
+      acoes={
+        <Button disabled>
+          <Plus className="mr-2 h-4 w-4" />
+          Nova Campanha
+        </Button>
+      }
+      sidebarWidth="sm"
+      sidebar={
+        <>
+          <CabecalhoSidebar
+            titulo="Campanhas"
+            subtitulo={`${campanhas.length} campanhas`}
           />
-          {(Object.keys(statusConfig) as StatusCampanha[]).map((status) => (
+
+          <BuscaSidebar
+            valor={busca}
+            onChange={setBusca}
+            placeholder="Buscar campanhas..."
+          />
+
+          <SecaoSidebar titulo="Status">
+            <ItemSidebar
+              icone={<Megaphone className="h-4 w-4" />}
+              label="Todas"
+              badge={contadores.todas}
+              ativo={filtroStatus === 'todas'}
+              onClick={() => setFiltroStatus('todas')}
+            />
+            {(Object.keys(statusConfig) as StatusCampanha[]).map((status) => (
             <ItemSidebar
               key={status}
               icone={statusConfig[status].icone}
@@ -310,40 +301,42 @@ export default function Campanhas() {
             />
           ))}
         </SecaoSidebar>
-      </SidebarSecundaria>
-
-      {/* Conteudo Principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CabecalhoPagina
-          titulo="Campanhas"
-          subtitulo="Gerencie suas campanhas de envio em massa"
-          icone={<Megaphone className="h-5 w-5" />}
-          acoes={
-            <Button disabled>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Campanha
-            </Button>
-          }
+        </>
+      }
+    >
+      {/* Estados de erro/loading/vazio */}
+      {erro ? (
+        <EmptyState
+          variant="error"
+          title="Erro ao carregar campanhas"
+          description="Não foi possível carregar a lista"
+          primaryAction={{
+            label: 'Tentar novamente',
+            onClick: () => recarregar(),
+          }}
         />
-
-        {/* Area de Conteudo */}
-        <div className="flex-1 overflow-auto p-6">
-          {carregando ? (
-            <EstadoCarregando texto="Carregando campanhas..." />
-          ) : campanhasFiltradas.length === 0 ? (
-            busca ? (
-              <EstadoBuscaVazia
-                termoBusca={busca}
-                onLimpar={() => setBusca('')}
-              />
-            ) : (
-              <EstadoVazio
-                titulo="Nenhuma campanha"
-                descricao="Crie sua primeira campanha de envio"
-                icone={<Megaphone className="h-16 w-16" />}
-              />
-            )
-          ) : (
+      ) : carregando ? (
+        <LoadingState variant="page" text="Carregando campanhas..." />
+      ) : campanhasFiltradas.length === 0 ? (
+        busca ? (
+          <EmptyState
+            variant="search"
+            title="Nenhum resultado encontrado"
+            description={`Não encontramos resultados para "${busca}". Tente usar outros termos.`}
+            primaryAction={{
+              label: 'Limpar busca',
+              onClick: () => setBusca(''),
+            }}
+          />
+        ) : (
+          <EmptyState
+            variant="default"
+            title="Nenhuma campanha"
+            description="Crie sua primeira campanha de envio"
+            icon={<Megaphone className="h-16 w-16" />}
+          />
+        )
+      ) : (
             <GridCards colunas={3}>
               {campanhasFiltradas.map((campanha) => (
                 <CardCampanha
@@ -356,8 +349,6 @@ export default function Campanhas() {
               ))}
             </GridCards>
           )}
-        </div>
-      </div>
-    </div>
+    </PageLayout>
   );
 }

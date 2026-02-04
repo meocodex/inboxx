@@ -23,15 +23,13 @@ import {
 import { formatarNumero, formatarMoeda } from '@/utilitarios/formatadores';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import {
-  SidebarSecundaria,
+  PageLayout,
   CabecalhoSidebar,
   SecaoSidebar,
   ItemSidebar,
   SeparadorSidebar,
-  CabecalhoPagina,
-  EstadoVazio,
-  EstadoCarregando,
-  EstadoErro,
+  LoadingState,
+  EmptyState,
 } from '@/componentes/layout';
 
 // =============================================================================
@@ -344,28 +342,76 @@ export default function Relatorios() {
   // ---------------------------------------------------------------------------
   const renderConteudo = () => {
     if (tipoRelatorio === 'conversas') {
-      if (carregandoConversas) return <EstadoCarregando texto="Carregando relatorio..." />;
-      if (erroConversas) return <EstadoErro titulo="Erro" mensagem="Falha ao carregar relatorio de conversas" onTentarNovamente={() => recarregarConversas()} />;
+      if (carregandoConversas) return <LoadingState variant="page" text="Carregando relatorio..." />;
+      if (erroConversas) {
+        return (
+          <EmptyState
+            variant="error"
+            title="Erro"
+            description="Falha ao carregar relatorio de conversas"
+            primaryAction={{ label: 'Tentar novamente', onClick: () => recarregarConversas() }}
+          />
+        );
+      }
       if (!conversas) {
-        return <EstadoVazio icone={<BarChart3 className="h-16 w-16" />} titulo="Sem dados" descricao="Nenhum dado disponivel para o periodo selecionado" />;
+        return (
+          <EmptyState
+            variant="default"
+            title="Sem dados"
+            description="Nenhum dado disponivel para o periodo selecionado"
+            icon={<BarChart3 className="h-16 w-16" />}
+          />
+        );
       }
       return renderConversas(conversas);
     }
 
     if (tipoRelatorio === 'kanban') {
-      if (carregandoKanban) return <EstadoCarregando texto="Carregando relatorio..." />;
-      if (erroKanban) return <EstadoErro titulo="Erro" mensagem="Falha ao carregar relatorio de kanban" onTentarNovamente={() => recarregarKanban()} />;
+      if (carregandoKanban) return <LoadingState variant="page" text="Carregando relatorio..." />;
+      if (erroKanban) {
+        return (
+          <EmptyState
+            variant="error"
+            title="Erro"
+            description="Falha ao carregar relatorio de kanban"
+            primaryAction={{ label: 'Tentar novamente', onClick: () => recarregarKanban() }}
+          />
+        );
+      }
       if (!kanban) {
-        return <EstadoVazio icone={<Users className="h-16 w-16" />} titulo="Sem dados" descricao="Nenhum dado de kanban disponivel" />;
+        return (
+          <EmptyState
+            variant="default"
+            title="Sem dados"
+            description="Nenhum dado de kanban disponivel"
+            icon={<Users className="h-16 w-16" />}
+          />
+        );
       }
       return renderKanban(kanban);
     }
 
     if (tipoRelatorio === 'campanhas') {
-      if (carregandoCampanhas) return <EstadoCarregando texto="Carregando relatorio..." />;
-      if (erroCampanhas) return <EstadoErro titulo="Erro" mensagem="Falha ao carregar relatorio de campanhas" onTentarNovamente={() => recarregarCampanhas()} />;
+      if (carregandoCampanhas) return <LoadingState variant="page" text="Carregando relatorio..." />;
+      if (erroCampanhas) {
+        return (
+          <EmptyState
+            variant="error"
+            title="Erro"
+            description="Falha ao carregar relatorio de campanhas"
+            primaryAction={{ label: 'Tentar novamente', onClick: () => recarregarCampanhas() }}
+          />
+        );
+      }
       if (!campanhas) {
-        return <EstadoVazio icone={<Megaphone className="h-16 w-16" />} titulo="Sem dados" descricao="Nenhuma campanha disponivel" />;
+        return (
+          <EmptyState
+            variant="default"
+            title="Sem dados"
+            description="Nenhuma campanha disponivel"
+            icon={<Megaphone className="h-16 w-16" />}
+          />
+        );
       }
       return renderCampanhas(campanhas);
     }
@@ -377,78 +423,71 @@ export default function Relatorios() {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="flex h-full">
-      {/* Sidebar Secundaria - Navegacao */}
-      <SidebarSecundaria largura="sm">
-        <CabecalhoSidebar
-          titulo="Relatorios"
-          subtitulo="Analise de dados"
-        />
+    <PageLayout
+      titulo="Relatorios"
+      subtitulo="Analise o desempenho do seu atendimento"
+      icone={<FileBarChart className="h-5 w-5" />}
+      sidebarWidth="sm"
+      sidebar={
+        <>
+          <CabecalhoSidebar
+            titulo="Relatorios"
+            subtitulo="Analise de dados"
+          />
 
-        <SecaoSidebar titulo="Tipo de Relatorio">
-          <ItemSidebar
-            icone={<MessageSquare className="h-4 w-4" />}
-            label="Conversas"
-            ativo={tipoRelatorio === 'conversas'}
-            onClick={() => setTipoRelatorio('conversas')}
-          />
-          <ItemSidebar
-            icone={<Users className="h-4 w-4" />}
-            label="Kanban"
-            ativo={tipoRelatorio === 'kanban'}
-            onClick={() => setTipoRelatorio('kanban')}
-          />
-          <ItemSidebar
-            icone={<Megaphone className="h-4 w-4" />}
-            label="Campanhas"
-            ativo={tipoRelatorio === 'campanhas'}
-            onClick={() => setTipoRelatorio('campanhas')}
-          />
-        </SecaoSidebar>
+          <SecaoSidebar titulo="Tipo de Relatorio">
+            <ItemSidebar
+              icone={<MessageSquare className="h-4 w-4" />}
+              label="Conversas"
+              ativo={tipoRelatorio === 'conversas'}
+              onClick={() => setTipoRelatorio('conversas')}
+            />
+            <ItemSidebar
+              icone={<Users className="h-4 w-4" />}
+              label="Kanban"
+              ativo={tipoRelatorio === 'kanban'}
+              onClick={() => setTipoRelatorio('kanban')}
+            />
+            <ItemSidebar
+              icone={<Megaphone className="h-4 w-4" />}
+              label="Campanhas"
+              ativo={tipoRelatorio === 'campanhas'}
+              onClick={() => setTipoRelatorio('campanhas')}
+            />
+          </SecaoSidebar>
 
-        <SeparadorSidebar />
+          <SeparadorSidebar />
 
-        <SecaoSidebar titulo="Periodo">
-          <ItemSidebar
-            icone={<Clock className="h-4 w-4" />}
-            label="Ultimos 7 dias"
-            ativo={filtroPeriodo === '7d'}
-            onClick={() => setFiltroPeriodo('7d')}
-          />
-          <ItemSidebar
-            icone={<Clock className="h-4 w-4" />}
-            label="Ultimos 30 dias"
-            ativo={filtroPeriodo === '30d'}
-            onClick={() => setFiltroPeriodo('30d')}
-          />
-          <ItemSidebar
-            icone={<Clock className="h-4 w-4" />}
-            label="Ultimos 90 dias"
-            ativo={filtroPeriodo === '90d'}
-            onClick={() => setFiltroPeriodo('90d')}
-          />
-          <ItemSidebar
-            icone={<Clock className="h-4 w-4" />}
-            label="Ultimo ano"
-            ativo={filtroPeriodo === '365d'}
-            onClick={() => setFiltroPeriodo('365d')}
-          />
-        </SecaoSidebar>
-      </SidebarSecundaria>
-
-      {/* Conteudo Principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CabecalhoPagina
-          titulo="Relatorios"
-          subtitulo="Analise o desempenho do seu atendimento"
-          icone={<FileBarChart className="h-5 w-5" />}
-        />
-
-        {/* Area de Conteudo */}
-        <div className="flex-1 overflow-auto p-6">
-          {renderConteudo()}
-        </div>
-      </div>
-    </div>
+          <SecaoSidebar titulo="Periodo">
+            <ItemSidebar
+              icone={<Clock className="h-4 w-4" />}
+              label="Ultimos 7 dias"
+              ativo={filtroPeriodo === '7d'}
+              onClick={() => setFiltroPeriodo('7d')}
+            />
+            <ItemSidebar
+              icone={<Clock className="h-4 w-4" />}
+              label="Ultimos 30 dias"
+              ativo={filtroPeriodo === '30d'}
+              onClick={() => setFiltroPeriodo('30d')}
+            />
+            <ItemSidebar
+              icone={<Clock className="h-4 w-4" />}
+              label="Ultimos 90 dias"
+              ativo={filtroPeriodo === '90d'}
+              onClick={() => setFiltroPeriodo('90d')}
+            />
+            <ItemSidebar
+              icone={<Clock className="h-4 w-4" />}
+              label="Ultimo ano"
+              ativo={filtroPeriodo === '365d'}
+              onClick={() => setFiltroPeriodo('365d')}
+            />
+          </SecaoSidebar>
+        </>
+      }
+    >
+      {renderConteudo()}
+    </PageLayout>
   );
 }

@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { LayoutPrincipal, ErrorBoundary, RotaProtegida } from '@/componentes/layout';
-import { CarregandoPagina } from '@/componentes/comum/Carregando';
+import { LayoutPrincipal, ErrorBoundary, AuthGuard, LoadingState } from '@/componentes/layout';
 
 // =============================================================================
 // Lazy Loading de Páginas
@@ -29,7 +28,7 @@ const Usuarios = lazy(() => import('@/paginas/usuarios/Usuarios'));
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>
-      <Suspense fallback={<CarregandoPagina />}>{children}</Suspense>
+      <Suspense fallback={<LoadingState variant="fullscreen" />}>{children}</Suspense>
     </ErrorBoundary>
   );
 }
@@ -53,11 +52,11 @@ export const router = createBrowserRouter([
   {
     path: '/conversas',
     element: (
-      <RotaProtegida>
+      <AuthGuard>
         <SuspenseWrapper>
           <Conversas />
         </SuspenseWrapper>
-      </RotaProtegida>
+      </AuthGuard>
     ),
   },
 

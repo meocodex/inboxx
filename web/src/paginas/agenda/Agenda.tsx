@@ -26,18 +26,16 @@ import { Label } from '@/componentes/ui/label';
 import { Badge } from '@/componentes/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import {
-  SidebarSecundaria,
+  PageLayout,
   CabecalhoSidebar,
   SecaoSidebar,
   ItemSidebar,
   SeparadorSidebar,
-  CabecalhoPagina,
   CardItem,
   CardItemConteudo,
   ListaCards,
-  EstadoVazio,
-  EstadoCarregando,
-  EstadoErro,
+  EmptyState,
+  LoadingState,
 } from '@/componentes/layout';
 import type { EventoResumo, TipoEvento, StatusEvento } from '@/tipos';
 
@@ -165,23 +163,6 @@ export default function Agenda() {
     criarMutation.mutate(dados);
   };
 
-  // ---------------------------------------------------------------------------
-  // Erro
-  // ---------------------------------------------------------------------------
-  if (erro) {
-    return (
-      <div className="flex h-full">
-        <div className="flex-1 flex items-center justify-center">
-          <EstadoErro
-            titulo="Erro ao carregar agenda"
-            mensagem="Nao foi possivel carregar os eventos"
-            onTentarNovamente={() => recarregar()}
-          />
-        </div>
-      </div>
-    );
-  }
-
   const listaEventos = eventos || [];
 
   // Filtrar eventos
@@ -219,91 +200,98 @@ export default function Agenda() {
   };
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar Secundaria - Filtros */}
-      <SidebarSecundaria largura="sm">
-        <CabecalhoSidebar
-          titulo="Agenda"
-          subtitulo={`${listaEventos.length} eventos`}
-          acoes={
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setModalAberto(true)}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          }
-        />
-
-        <SecaoSidebar titulo="Status">
-          <ItemSidebar
-            icone={<Calendar className="h-4 w-4" />}
-            label="Todos"
-            badge={contadores.todos}
-            ativo={filtroStatus === 'todos'}
-            onClick={() => setFiltroStatus('todos')}
+    <PageLayout
+      titulo="Agenda"
+      subtitulo="Gerencie seus compromissos e tarefas"
+      icone={<Calendar className="h-5 w-5" />}
+      acoes={
+        <Button onClick={() => setModalAberto(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Novo Evento
+        </Button>
+      }
+      sidebarWidth="sm"
+      sidebar={
+        <>
+          <CabecalhoSidebar
+            titulo="Agenda"
+            subtitulo={`${listaEventos.length} eventos`}
+            acoes={
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setModalAberto(true)}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            }
           />
-          {(Object.keys(statusConfig) as StatusEvento[]).map((status) => (
+
+          <SecaoSidebar titulo="Status">
             <ItemSidebar
-              key={status}
-              icone={statusConfig[status].icone}
-              label={statusConfig[status].label}
-              badge={contadores[status]}
-              ativo={filtroStatus === status}
-              onClick={() => setFiltroStatus(status)}
+              icone={<Calendar className="h-4 w-4" />}
+              label="Todos"
+              badge={contadores.todos}
+              ativo={filtroStatus === 'todos'}
+              onClick={() => setFiltroStatus('todos')}
             />
-          ))}
-        </SecaoSidebar>
-
-        <SeparadorSidebar />
-
-        <SecaoSidebar titulo="Tipo">
-          <ItemSidebar
-            icone={<Calendar className="h-4 w-4" />}
-            label="Todos os tipos"
-            badge={contadoresTipo.todos}
-            ativo={filtroTipo === 'todos'}
-            onClick={() => setFiltroTipo('todos')}
-          />
-          {(Object.keys(tipoConfig) as TipoEvento[]).map((tipo) => {
-            const TipoIcon = tipoConfig[tipo].icon;
-            return (
+            {(Object.keys(statusConfig) as StatusEvento[]).map((status) => (
               <ItemSidebar
-                key={tipo}
-                icone={<TipoIcon className="h-4 w-4" style={{ color: tipoConfig[tipo].cor }} />}
-                label={tipoConfig[tipo].label}
-                badge={contadoresTipo[tipo]}
-                ativo={filtroTipo === tipo}
-                onClick={() => setFiltroTipo(tipo)}
+                key={status}
+                icone={statusConfig[status].icone}
+                label={statusConfig[status].label}
+                badge={contadores[status]}
+                ativo={filtroStatus === status}
+                onClick={() => setFiltroStatus(status)}
               />
-            );
-          })}
-        </SecaoSidebar>
-      </SidebarSecundaria>
+            ))}
+          </SecaoSidebar>
 
-      {/* Conteudo Principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CabecalhoPagina
-          titulo="Agenda"
-          subtitulo="Gerencie seus compromissos e tarefas"
-          icone={<Calendar className="h-5 w-5" />}
-          acoes={
-            <Button onClick={() => setModalAberto(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Evento
-            </Button>
-          }
-        />
+          <SeparadorSidebar />
 
-        {/* Area de Conteudo */}
-        <div className="flex-1 overflow-auto p-6">
-          {carregando ? (
-            <EstadoCarregando texto="Carregando eventos..." />
-          ) : eventosFiltrados.length === 0 ? (
-            <EstadoVazio
-              titulo="Nenhum evento"
-              descricao="Crie seu primeiro evento ou tarefa"
-              icone={<Calendar className="h-16 w-16" />}
-              acao={{ label: 'Novo Evento', onClick: () => setModalAberto(true) }}
+          <SecaoSidebar titulo="Tipo">
+            <ItemSidebar
+              icone={<Calendar className="h-4 w-4" />}
+              label="Todos os tipos"
+              badge={contadoresTipo.todos}
+              ativo={filtroTipo === 'todos'}
+              onClick={() => setFiltroTipo('todos')}
             />
-          ) : (
+            {(Object.keys(tipoConfig) as TipoEvento[]).map((tipo) => {
+              const TipoIcon = tipoConfig[tipo].icon;
+              return (
+                <ItemSidebar
+                  key={tipo}
+                  icone={<TipoIcon className="h-4 w-4" style={{ color: tipoConfig[tipo].cor }} />}
+                  label={tipoConfig[tipo].label}
+                  badge={contadoresTipo[tipo]}
+                  ativo={filtroTipo === tipo}
+                  onClick={() => setFiltroTipo(tipo)}
+                />
+              );
+            })}
+          </SecaoSidebar>
+        </>
+      }
+    >
+      {/* Estados de erro/loading/vazio */}
+      {erro ? (
+        <EmptyState
+          variant="error"
+          title="Erro ao carregar agenda"
+          description="Não foi possível carregar os eventos"
+          primaryAction={{
+            label: 'Tentar novamente',
+            onClick: () => recarregar(),
+          }}
+        />
+      ) : carregando ? (
+        <LoadingState variant="page" text="Carregando eventos..." />
+      ) : eventosFiltrados.length === 0 ? (
+        <EmptyState
+          variant="default"
+          title="Nenhum evento"
+          description="Crie seu primeiro evento ou tarefa"
+          icon={<Calendar className="h-16 w-16" />}
+          primaryAction={{ label: 'Novo Evento', onClick: () => setModalAberto(true) }}
+        />
+      ) : (
             <div className="space-y-6">
               {datasOrdenadas.map((data) => (
                 <div key={data}>
@@ -366,8 +354,6 @@ export default function Agenda() {
               ))}
             </div>
           )}
-        </div>
-      </div>
 
       {/* Modal */}
       {modalAberto && (
@@ -423,6 +409,6 @@ export default function Agenda() {
           </Card>
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

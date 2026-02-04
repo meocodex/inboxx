@@ -58,6 +58,14 @@
     --border: 240 16% 20%;
     --input: 240 16% 20%;
     --ring: 158 100% 42%;
+
+    /* Design Tokens - Adicionais */
+    --primary-hover: 158 100% 38%;
+    --primary-active: 158 100% 34%;
+    --sidebar-principal: 70px;
+    --spacing-conteudo: 1.5rem; /* 24px */
+    --spacing-gap: 1rem; /* 16px */
+    --header-height: 4rem; /* 64px */
   }
 }
 

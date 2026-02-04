@@ -5,11 +5,10 @@ import { conexoesServico } from '@/servicos';
 import { Button } from '@/componentes/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/componentes/ui/tabs';
 import {
-  CabecalhoPagina,
+  PageLayout,
   GridCards,
-  EstadoVazio,
-  EstadoCarregando,
-  EstadoErro,
+  EmptyState,
+  LoadingState,
 } from '@/componentes/layout';
 import { CardConexao, DialogConexao } from '@/componentes/canais';
 import type { StatusCanalConexao } from '@/tipos/conexao.tipos';
@@ -60,28 +59,6 @@ export default function Conexoes() {
     setConexaoSelecionada(null);
   };
 
-  // ---------------------------------------------------------------------------
-  // Erro
-  // ---------------------------------------------------------------------------
-  if (erro) {
-    return (
-      <div className="flex h-full flex-col">
-        <CabecalhoPagina
-          titulo="Canais"
-          subtitulo="Gerencie suas conexões de canais"
-          icone={<Smartphone className="h-5 w-5" />}
-        />
-        <div className="flex-1 flex items-center justify-center">
-          <EstadoErro
-            titulo="Erro ao carregar conexoes"
-            mensagem="Nao foi possivel carregar a lista"
-            onTentarNovamente={() => recarregar()}
-          />
-        </div>
-      </div>
-    );
-  }
-
   const listaConexoes = conexoes || [];
 
   // Filtrar conexoes
@@ -100,34 +77,32 @@ export default function Conexoes() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* Header */}
-      <CabecalhoPagina
-        titulo="Canais"
-        subtitulo="Gerencie suas conexões de canais"
-        icone={<Smartphone className="h-5 w-5" />}
-        acoes={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => recarregar()}
-              disabled={carregando}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${carregando ? 'animate-spin' : ''}`}
-              />
-            </Button>
-            <Button onClick={handleNovaConexao}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Conexao
-            </Button>
-          </div>
-        }
-      />
-
+    <PageLayout
+      titulo="Canais"
+      subtitulo="Gerencie suas conexões de canais"
+      icone={<Smartphone className="h-5 w-5" />}
+      acoes={
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => recarregar()}
+            disabled={carregando}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${carregando ? 'animate-spin' : ''}`}
+            />
+          </Button>
+          <Button onClick={handleNovaConexao}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Conexao
+          </Button>
+        </div>
+      }
+      hideSidebar
+    >
       {/* Filtros Tabs Horizontais */}
-      <div className="px-6 py-4 border-b">
+      <div className="px-6 py-4 border-b -mt-6">
         <Tabs
           value={filtroStatus}
           onValueChange={(value) => setFiltroStatus(value as FiltroStatus)}
@@ -152,22 +127,32 @@ export default function Conexoes() {
         </Tabs>
       </div>
 
-      {/* Area de Conteudo */}
-      <div className="flex-1 overflow-auto p-6">
-        {carregando ? (
-          <EstadoCarregando texto="Carregando conexoes..." />
-        ) : conexoesFiltradas.length === 0 ? (
-          <EstadoVazio
-            titulo="Nenhuma conexao"
-            descricao={
-              filtroStatus === 'todas'
-                ? 'Crie sua primeira conexao WhatsApp'
-                : `Nenhuma conexao com status ${filtroStatus}`
-            }
-            icone={<Smartphone className="h-16 w-16" />}
-            acao={{ label: 'Nova Conexao', onClick: handleNovaConexao }}
-          />
-        ) : (
+      {/* Estados e conteúdo */}
+      {erro ? (
+        <EmptyState
+          variant="error"
+          title="Erro ao carregar conexoes"
+          description="Não foi possível carregar a lista"
+          primaryAction={{
+            label: 'Tentar novamente',
+            onClick: () => recarregar(),
+          }}
+        />
+      ) : carregando ? (
+        <LoadingState variant="page" text="Carregando conexoes..." />
+      ) : conexoesFiltradas.length === 0 ? (
+        <EmptyState
+          variant="default"
+          title="Nenhuma conexao"
+          description={
+            filtroStatus === 'todas'
+              ? 'Crie sua primeira conexao WhatsApp'
+              : `Nenhuma conexao com status ${filtroStatus}`
+          }
+          icon={<Smartphone className="h-16 w-16" />}
+          primaryAction={{ label: 'Nova Conexao', onClick: handleNovaConexao }}
+        />
+      ) : (
           <GridCards colunas={3}>
             {conexoesFiltradas.map((conexao) => (
               <CardConexao
@@ -178,7 +163,6 @@ export default function Conexoes() {
             ))}
           </GridCards>
         )}
-      </div>
 
       {/* Dialog Unificado - Criar/Ver/Editar */}
       <DialogConexao
@@ -187,6 +171,6 @@ export default function Conexoes() {
         conexaoId={conexaoSelecionada}
         onSucesso={() => recarregar()}
       />
-    </div>
+    </PageLayout>
   );
 }

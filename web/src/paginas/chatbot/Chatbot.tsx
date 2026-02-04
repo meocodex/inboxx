@@ -24,19 +24,16 @@ import { Label } from '@/componentes/ui/label';
 import { Badge } from '@/componentes/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import {
-  SidebarSecundaria,
+  PageLayout,
   CabecalhoSidebar,
   SecaoSidebar,
   ItemSidebar,
   BuscaSidebar,
-  CabecalhoPagina,
   CardItem,
   CardItemConteudo,
   GridCards,
-  EstadoVazio,
-  EstadoCarregando,
-  EstadoErro,
-  EstadoBuscaVazia,
+  EmptyState,
+  LoadingState,
 } from '@/componentes/layout';
 import type { FluxoResumo, StatusFluxo, AtualizarFluxoDTO } from '@/tipos';
 
@@ -200,20 +197,6 @@ export default function Chatbot() {
   // ---------------------------------------------------------------------------
   // Erro
   // ---------------------------------------------------------------------------
-  if (erro) {
-    return (
-      <div className="flex h-full">
-        <div className="flex-1 flex items-center justify-center">
-          <EstadoErro
-            titulo="Erro ao carregar fluxos"
-            mensagem="Nao foi possivel carregar a lista"
-            onTentarNovamente={() => recarregar()}
-          />
-        </div>
-      </div>
-    );
-  }
-
   const listaFluxos = fluxos || [];
 
   // Filtrar fluxos
@@ -232,79 +215,91 @@ export default function Chatbot() {
   };
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar Secundaria - Filtros */}
-      <SidebarSecundaria largura="sm">
-        <CabecalhoSidebar
-          titulo="Chatbot"
-          subtitulo={`${listaFluxos.length} fluxos`}
-          acoes={
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={abrirCriar}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          }
-        />
-
-        <BuscaSidebar
-          valor={busca}
-          onChange={setBusca}
-          placeholder="Buscar fluxos..."
-        />
-
-        <SecaoSidebar titulo="Status">
-          <ItemSidebar
-            icone={<Bot className="h-4 w-4" />}
-            label="Todos"
-            badge={contadores.todos}
-            ativo={filtroStatus === 'todos'}
-            onClick={() => setFiltroStatus('todos')}
-          />
-          {(Object.keys(statusConfig) as StatusFluxo[]).map((status) => (
-            <ItemSidebar
-              key={status}
-              icone={statusConfig[status].icone}
-              label={statusConfig[status].label}
-              badge={contadores[status]}
-              ativo={filtroStatus === status}
-              onClick={() => setFiltroStatus(status)}
-            />
-          ))}
-        </SecaoSidebar>
-      </SidebarSecundaria>
-
-      {/* Conteudo Principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CabecalhoPagina
-          titulo="Chatbot"
-          subtitulo="Gerencie seus fluxos de automacao"
-          icone={<Bot className="h-5 w-5" />}
-          acoes={
-            <Button onClick={abrirCriar}>
+    <PageLayout
+      titulo="Chatbot"
+      subtitulo="Gerencie seus fluxos de automacao"
+      icone={<Bot className="h-5 w-5" />}
+      acoes={
+        <Button onClick={abrirCriar}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Fluxo
             </Button>
           }
-        />
+      sidebarWidth="sm"
+      sidebar={
+        <>
+          <CabecalhoSidebar
+            titulo="Chatbot"
+            subtitulo={`${listaFluxos.length} fluxos`}
+            acoes={
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={abrirCriar}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            }
+          />
 
-        {/* Area de Conteudo */}
-        <div className="flex-1 overflow-auto p-6">
-          {carregando ? (
-            <EstadoCarregando texto="Carregando fluxos..." />
-          ) : fluxosFiltrados.length === 0 ? (
-            busca ? (
-              <EstadoBuscaVazia
-                termoBusca={busca}
-                onLimpar={() => setBusca('')}
+          <BuscaSidebar
+            valor={busca}
+            onChange={setBusca}
+            placeholder="Buscar fluxos..."
+          />
+
+          <SecaoSidebar titulo="Status">
+            <ItemSidebar
+              icone={<Bot className="h-4 w-4" />}
+              label="Todos"
+              badge={contadores.todos}
+              ativo={filtroStatus === 'todos'}
+              onClick={() => setFiltroStatus('todos')}
+            />
+            {(Object.keys(statusConfig) as StatusFluxo[]).map((status) => (
+              <ItemSidebar
+                key={status}
+                icone={statusConfig[status].icone}
+                label={statusConfig[status].label}
+                badge={contadores[status]}
+                ativo={filtroStatus === status}
+                onClick={() => setFiltroStatus(status)}
               />
-            ) : (
-              <EstadoVazio
-                titulo="Nenhum fluxo"
-                descricao="Crie seu primeiro fluxo de automacao"
-                icone={<Bot className="h-16 w-16" />}
-                acao={{ label: 'Novo Fluxo', onClick: abrirCriar }}
-              />
-            )
-          ) : (
+            ))}
+          </SecaoSidebar>
+        </>
+      }
+    >
+      {/* Estados de erro/loading/vazio */}
+      {erro ? (
+        <EmptyState
+          variant="error"
+          title="Erro ao carregar fluxos"
+          description="Não foi possível carregar a lista"
+          primaryAction={{
+            label: 'Tentar novamente',
+            onClick: () => recarregar(),
+          }}
+        />
+      ) : carregando ? (
+        <LoadingState variant="page" text="Carregando fluxos..." />
+      ) : fluxosFiltrados.length === 0 ? (
+        busca ? (
+          <EmptyState
+            variant="search"
+            title="Nenhum resultado encontrado"
+            description={`Não encontramos resultados para "${busca}". Tente usar outros termos.`}
+            primaryAction={{
+              label: 'Limpar busca',
+              onClick: () => setBusca(''),
+            }}
+          />
+        ) : (
+          <EmptyState
+            variant="default"
+            title="Nenhum fluxo"
+            description="Crie seu primeiro fluxo de automacao"
+            icon={<Bot className="h-16 w-16" />}
+            primaryAction={{ label: 'Novo Fluxo', onClick: abrirCriar }}
+          />
+        )
+      ) : (
             <GridCards colunas={3}>
               {fluxosFiltrados.map((fluxo) => {
                 const config = statusConfig[fluxo.status] || statusConfig.RASCUNHO;
@@ -366,8 +361,6 @@ export default function Chatbot() {
               })}
             </GridCards>
           )}
-        </div>
-      </div>
 
       {/* Modal */}
       {modalAberto && (
@@ -427,6 +420,6 @@ export default function Chatbot() {
           </Card>
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

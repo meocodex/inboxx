@@ -6,7 +6,13 @@
 export { LayoutPrincipal } from './LayoutPrincipal';
 export { MenuLateral } from './MenuLateral';
 export { ErrorBoundary } from './ErrorBoundary';
-export { RotaProtegida } from './RotaProtegida';
+
+// Autenticação
+export { AuthGuard } from './AuthGuard';
+
+// Novo Sistema de Layout (Compound Components)
+export { AppLayout, useAppLayoutContext } from './AppLayout';
+export { PageLayout } from './PageLayout';
 
 // Sidebar Secundaria
 export {
@@ -40,10 +46,18 @@ export {
   ListaCards,
 } from './CardItem';
 
-// Estado Vazio
+// Estados de Loading (Novo Sistema)
 export {
-  EstadoVazio,
-  EstadoCarregando,
-  EstadoErro,
-  EstadoBuscaVazia,
-} from './EstadoVazio';
+  LoadingState,
+  CarregandoPagina, // @deprecated
+  CarregandoInline, // @deprecated
+  EstadoCarregando, // @deprecated
+} from './LoadingState';
+
+// Estados Vazios (Novo Sistema)
+export {
+  EmptyState,
+  EstadoVazio, // @deprecated
+  EstadoErro, // @deprecated
+  EstadoBuscaVazia, // @deprecated
+} from './EmptyState';

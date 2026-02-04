@@ -19,11 +19,10 @@ import { Label } from '@/componentes/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/componentes/ui/card';
 import { Switch } from '@/componentes/ui/switch';
 import {
-  SidebarSecundaria,
+  PageLayout,
   CabecalhoSidebar,
   SecaoSidebar,
   ItemSidebar,
-  CabecalhoPagina,
 } from '@/componentes/layout';
 
 // =============================================================================
@@ -281,45 +280,38 @@ export default function Configuracoes() {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="flex h-full">
-      {/* Sidebar Secundaria - Navegacao */}
-      <SidebarSecundaria largura="sm">
-        <CabecalhoSidebar
-          titulo="Configuracoes"
-          subtitulo="Preferencias do sistema"
-        />
+    <PageLayout
+      titulo="Configuracoes"
+      subtitulo="Gerencie suas preferencias"
+      icone={<Settings className="h-5 w-5" />}
+      sidebarWidth="sm"
+      sidebar={
+        <>
+          <CabecalhoSidebar
+            titulo="Configuracoes"
+            subtitulo="Preferencias do sistema"
+          />
 
-        <SecaoSidebar titulo="Navegacao">
-          {abas.map((aba) => {
-            const Icon = aba.icon;
-            return (
-              <ItemSidebar
-                key={aba.id}
-                icone={<Icon className="h-4 w-4" />}
-                label={aba.label}
-                ativo={abaAtiva === aba.id}
-                onClick={() => setAbaAtiva(aba.id)}
-              />
-            );
-          })}
-        </SecaoSidebar>
-      </SidebarSecundaria>
-
-      {/* Conteudo Principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CabecalhoPagina
-          titulo="Configuracoes"
-          subtitulo="Gerencie suas preferencias"
-          icone={<Settings className="h-5 w-5" />}
-        />
-
-        {/* Area de Conteudo */}
-        <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-2xl">
-            {renderConteudo()}
-          </div>
-        </div>
+          <SecaoSidebar titulo="Navegacao">
+            {abas.map((aba) => {
+              const Icon = aba.icon;
+              return (
+                <ItemSidebar
+                  key={aba.id}
+                  icone={<Icon className="h-4 w-4" />}
+                  label={aba.label}
+                  ativo={abaAtiva === aba.id}
+                  onClick={() => setAbaAtiva(aba.id)}
+                />
+              );
+            })}
+          </SecaoSidebar>
+        </>
+      }
+    >
+      <div className="max-w-2xl">
+        {renderConteudo()}
       </div>
-    </div>
+    </PageLayout>
   );
 }

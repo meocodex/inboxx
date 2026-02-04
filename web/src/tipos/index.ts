@@ -7,3 +7,4 @@ export * from './campanha.tipos';
 export * from './chatbot.tipos';
 export * from './agenda.tipos';
 export * from './conexao.tipos';
+export * from './layout.tipos';

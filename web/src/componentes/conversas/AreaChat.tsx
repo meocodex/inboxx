@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/componentes/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/componentes/ui/tooltip';
-import { Carregando } from '@/componentes/comum/Carregando';
+import { LoadingState } from '@/componentes/layout';
 import { EntradaMensagem } from './EntradaMensagem';
 import { RespostasRapidas, respostasPadrao } from './RespostasRapidas';
 import { IconeCanal } from './IconeCanal';
@@ -306,7 +306,7 @@ export const AreaChat = memo(({
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         {carregando ? (
           <div className="flex items-center justify-center h-full">
-            <Carregando texto="Carregando mensagens..." />
+            <LoadingState variant="spinner" text="Carregando mensagens..." />
           </div>
         ) : mensagens.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground">

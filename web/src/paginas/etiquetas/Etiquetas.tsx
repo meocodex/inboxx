@@ -11,17 +11,15 @@ import { Input } from '@/componentes/ui/input';
 import { Label } from '@/componentes/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import {
-  SidebarSecundaria,
+  PageLayout,
   CabecalhoSidebar,
   SecaoSidebar,
   ItemSidebar,
-  CabecalhoPagina,
   CardItem,
   CardItemConteudo,
   GridCards,
-  EstadoVazio,
-  EstadoCarregando,
-  EstadoErro,
+  LoadingState,
+  EmptyState,
 } from '@/componentes/layout';
 import type { Etiqueta } from '@/tipos';
 
@@ -156,22 +154,6 @@ export default function Etiquetas() {
   };
 
   // ---------------------------------------------------------------------------
-  // Erro
-  // ---------------------------------------------------------------------------
-  if (erro) {
-    return (
-      <div className="flex h-full">
-        <div className="flex-1 flex items-center justify-center">
-          <EstadoErro
-            titulo="Erro ao carregar etiquetas"
-            mensagem="Nao foi possivel carregar a lista"
-            onTentarNovamente={() => recarregar()}
-          />
-        </div>
-      </div>
-    );
-  }
-
   const listaEtiquetas = etiquetas || [];
 
   // Filtrar por cor
@@ -183,111 +165,117 @@ export default function Etiquetas() {
     : listaEtiquetas;
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar Secundaria - Filtros */}
-      <SidebarSecundaria largura="sm">
-        <CabecalhoSidebar
-          titulo="Etiquetas"
-          subtitulo={`${listaEtiquetas.length} etiquetas`}
-          acoes={
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={abrirCriar}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          }
-        />
-
-        <SecaoSidebar titulo="Filtrar por Cor">
-          <ItemSidebar
-            icone={<Tag className="h-4 w-4" />}
-            label="Todas as cores"
-            badge={listaEtiquetas.length}
-            ativo={corFiltro === null}
-            onClick={() => setCorFiltro(null)}
+    <>
+      <PageLayout
+        titulo="Etiquetas"
+        subtitulo="Organize seus contatos com etiquetas"
+        icone={<Tag className="h-5 w-5" />}
+        acoes={
+          <Button onClick={abrirCriar}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Etiqueta
+          </Button>
+        }
+        sidebarWidth="sm"
+        sidebar={
+        <>
+          <CabecalhoSidebar
+            titulo="Etiquetas"
+            subtitulo={`${listaEtiquetas.length} etiquetas`}
+            acoes={
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={abrirCriar}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            }
           />
-          {GRUPOS_CORES.map((grupo) => {
-            const count = listaEtiquetas.filter((e) =>
-              grupo.cores.includes(e.cor)
-            ).length;
-            if (count === 0) return null;
-            return (
-              <ItemSidebar
-                key={grupo.nome}
+
+          <SecaoSidebar titulo="Filtrar por Cor">
+            <ItemSidebar
+              icone={<Tag className="h-4 w-4" />}
+              label="Todas as cores"
+              badge={listaEtiquetas.length}
+              ativo={corFiltro === null}
+              onClick={() => setCorFiltro(null)}
+            />
+            {GRUPOS_CORES.map((grupo) => {
+              const count = listaEtiquetas.filter((e) =>
+                grupo.cores.includes(e.cor)
+              ).length;
+              if (count === 0) return null;
+              return (
+                <ItemSidebar
+                  key={grupo.nome}
+                  icone={
+                    <div
+                      className="h-3 w-3 rounded-full"
+                      style={{ backgroundColor: grupo.cores[0] }}
+                    />
+                  }
+                  label={grupo.nome}
+                  badge={count}
+                  ativo={corFiltro === grupo.cores[0]}
+                  onClick={() => setCorFiltro(grupo.cores[0])}
+                />
+              );
+            })}
+          </SecaoSidebar>
+        </>
+      }
+    >
+      {erro ? (
+        <EmptyState
+          variant="error"
+          title="Erro ao carregar etiquetas"
+          description="Não foi possível carregar a lista"
+          primaryAction={{
+            label: 'Tentar novamente',
+            onClick: () => recarregar(),
+          }}
+        />
+      ) : carregando ? (
+        <LoadingState variant="page" text="Carregando etiquetas..." />
+      ) : etiquetasFiltradas.length === 0 ? (
+        <EmptyState
+          variant="default"
+          title="Nenhuma etiqueta"
+          description="Crie sua primeira etiqueta para organizar contatos"
+          icon={<Tag className="h-16 w-16" />}
+          primaryAction={{ label: 'Nova Etiqueta', onClick: abrirCriar }}
+        />
+      ) : (
+        <GridCards colunas={3}>
+          {etiquetasFiltradas.map((etiqueta) => (
+            <CardItem
+              key={etiqueta.id}
+              acoes={[
+                {
+                  label: 'Editar',
+                  icone: <Pencil className="h-4 w-4" />,
+                  onClick: () => abrirEditar(etiqueta),
+                },
+                {
+                  label: 'Excluir',
+                  icone: <Trash2 className="h-4 w-4" />,
+                  onClick: () => excluirMutation.mutate(etiqueta.id),
+                  variante: 'destructive',
+                },
+              ]}
+            >
+              <CardItemConteudo
                 icone={
                   <div
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: grupo.cores[0] }}
+                    className="h-5 w-5 rounded-full"
+                    style={{ backgroundColor: etiqueta.cor }}
                   />
                 }
-                label={grupo.nome}
-                badge={count}
-                ativo={corFiltro === grupo.cores[0]}
-                onClick={() => setCorFiltro(grupo.cores[0])}
+                titulo={etiqueta.nome}
+                subtitulo={etiqueta.cor}
               />
-            );
-          })}
-        </SecaoSidebar>
-      </SidebarSecundaria>
-
-      {/* Conteudo Principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CabecalhoPagina
-          titulo="Etiquetas"
-          subtitulo="Organize seus contatos com etiquetas"
-          icone={<Tag className="h-5 w-5" />}
-          acoes={
-            <Button onClick={abrirCriar}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Etiqueta
-            </Button>
-          }
-        />
-
-        {/* Area de Conteudo */}
-        <div className="flex-1 overflow-auto p-6">
-          {carregando ? (
-            <EstadoCarregando texto="Carregando etiquetas..." />
-          ) : etiquetasFiltradas.length === 0 ? (
-            <EstadoVazio
-              titulo="Nenhuma etiqueta"
-              descricao="Crie sua primeira etiqueta para organizar contatos"
-              icone={<Tag className="h-16 w-16" />}
-              acao={{ label: 'Nova Etiqueta', onClick: abrirCriar }}
-            />
-          ) : (
-            <GridCards colunas={3}>
-              {etiquetasFiltradas.map((etiqueta) => (
-                <CardItem
-                  key={etiqueta.id}
-                  acoes={[
-                    {
-                      label: 'Editar',
-                      icone: <Pencil className="h-4 w-4" />,
-                      onClick: () => abrirEditar(etiqueta),
-                    },
-                    {
-                      label: 'Excluir',
-                      icone: <Trash2 className="h-4 w-4" />,
-                      onClick: () => excluirMutation.mutate(etiqueta.id),
-                      variante: 'destructive',
-                    },
-                  ]}
-                >
-                  <CardItemConteudo
-                    icone={
-                      <div
-                        className="h-5 w-5 rounded-full"
-                        style={{ backgroundColor: etiqueta.cor }}
-                      />
-                    }
-                    titulo={etiqueta.nome}
-                    subtitulo={etiqueta.cor}
-                  />
-                </CardItem>
-              ))}
-            </GridCards>
-          )}
-        </div>
-      </div>
+            </CardItem>
+          ))}
+        </GridCards>
+      )}
+    </PageLayout>
 
       {/* Modal */}
       {modalAberto && (
@@ -340,6 +328,6 @@ export default function Etiquetas() {
           </Card>
         </div>
       )}
-    </div>
+    </>
   );
 }

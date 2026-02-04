@@ -3,11 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { conversasServico } from '@/servicos';
 import { useToast } from '@/hooks';
 import { useUIStore, usePainelInfoAberto } from '@/stores';
+import { AppLayout, EmptyState } from '@/componentes/layout';
 import { SidebarConversas } from '@/componentes/conversas/SidebarConversas';
 import { ListaConversas } from '@/componentes/conversas/ListaConversas';
 import { AreaChat } from '@/componentes/conversas/AreaChat';
 import { PainelCliente } from '@/componentes/conversas/PainelCliente';
-import { ErroMensagem } from '@/componentes/comum/ErroMensagem';
 import type { ConversaResumo, Mensagem, TipoMensagem, FiltroSidebar, TipoCanal, Contato } from '@/tipos';
 
 // =============================================================================
@@ -131,13 +131,19 @@ export default function Conversas() {
   // ---------------------------------------------------------------------------
   if (erroLista) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <ErroMensagem
-          titulo="Erro ao carregar conversas"
-          mensagem="Nao foi possivel carregar a lista de conversas"
-          onTentarNovamente={() => recarregarLista()}
-        />
-      </div>
+      <AppLayout showSidebar={false}>
+        <div className="flex-1 flex items-center justify-center">
+          <EmptyState
+            variant="error"
+            title="Erro ao carregar conversas"
+            description="Não foi possível carregar a lista de conversas"
+            primaryAction={{
+              label: 'Tentar novamente',
+              onClick: () => recarregarLista(),
+            }}
+          />
+        </div>
+      </AppLayout>
     );
   }
 
@@ -185,53 +191,53 @@ export default function Conversas() {
   } : null;
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Render - Layout especial de 4 colunas
   // ---------------------------------------------------------------------------
   return (
-      <div className="flex h-full">
-        {/* Coluna 1: Sidebar de Conversas - 70px */}
-        <SidebarConversas
-          filtroAtivo={filtroSidebar}
-          onFiltroChange={setFiltroSidebar}
-          canalAtivo={canalAtivo}
-          onCanalChange={setCanalAtivo}
-          contadores={contadoresSidebar}
-          contadoresCanais={contadoresCanais}
-        />
+    <AppLayout showSidebar={false}>
+      {/* Coluna 1: Sidebar de Conversas - 70px */}
+      <SidebarConversas
+        filtroAtivo={filtroSidebar}
+        onFiltroChange={setFiltroSidebar}
+        canalAtivo={canalAtivo}
+        onCanalChange={setCanalAtivo}
+        contadores={contadoresSidebar}
+        contadoresCanais={contadoresCanais}
+      />
 
-        {/* Coluna 2: Lista de Conversas - 320px */}
-        <div className="w-80 shrink-0 border-r border-border">
-          <ListaConversas
-            conversas={conversas}
-            carregando={carregandoLista}
-            conversaSelecionadaId={conversaSelecionadaId}
-            onSelecionarConversa={handleSelecionarConversa}
-            canalAtivo={canalAtivo}
+      {/* Coluna 2: Lista de Conversas - 320px */}
+      <div className="w-80 shrink-0 border-r border-border">
+        <ListaConversas
+          conversas={conversas}
+          carregando={carregandoLista}
+          conversaSelecionadaId={conversaSelecionadaId}
+          onSelecionarConversa={handleSelecionarConversa}
+          canalAtivo={canalAtivo}
+        />
+      </div>
+
+      {/* Coluna 3: Area de Chat - flex-1 */}
+      <AreaChat
+        conversa={conversaAtual || null}
+        mensagens={mensagens}
+        carregando={carregandoConversa || carregandoMensagens}
+        onEnviarMensagem={handleEnviarMensagem}
+        onEncerrar={handleEncerrar}
+        onReabrir={handleReabrir}
+        onTogglePainelInfo={togglePainelInfo}
+        painelInfoAberto={painelInfoAberto}
+      />
+
+      {/* Coluna 4: Painel de Informacoes do Cliente - 300px (condicional) */}
+      {painelInfoAberto && (
+        <div className="w-[300px] shrink-0 border-l border-border">
+          <PainelCliente
+            contato={contatoCompleto}
+            conversa={conversaAtual || null}
+            onFechar={handleFecharPainelInfo}
           />
         </div>
-
-        {/* Coluna 3: Area de Chat - flex-1 */}
-        <AreaChat
-          conversa={conversaAtual || null}
-          mensagens={mensagens}
-          carregando={carregandoConversa || carregandoMensagens}
-          onEnviarMensagem={handleEnviarMensagem}
-          onEncerrar={handleEncerrar}
-          onReabrir={handleReabrir}
-          onTogglePainelInfo={togglePainelInfo}
-          painelInfoAberto={painelInfoAberto}
-        />
-
-        {/* Coluna 4: Painel de Informacoes do Cliente - 300px (condicional) */}
-        {painelInfoAberto && (
-          <div className="w-[300px] shrink-0 border-l border-border">
-            <PainelCliente
-              contato={contatoCompleto}
-              conversa={conversaAtual || null}
-              onFechar={handleFecharPainelInfo}
-            />
-          </div>
-        )}
-      </div>
+      )}
+    </AppLayout>
   );
 }

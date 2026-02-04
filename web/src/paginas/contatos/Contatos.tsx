@@ -24,20 +24,17 @@ import { Label } from '@/componentes/ui/label';
 import { Badge } from '@/componentes/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import {
-  SidebarSecundaria,
+  PageLayout,
   CabecalhoSidebar,
   SecaoSidebar,
   ItemSidebar,
   SeparadorSidebar,
   BuscaSidebar,
-  CabecalhoPagina,
   CardItem,
   CardItemAvatar,
   GridCards,
-  EstadoVazio,
-  EstadoCarregando,
-  EstadoErro,
-  EstadoBuscaVazia,
+  EmptyState,
+  LoadingState,
 } from '@/componentes/layout';
 import type { Contato, Etiqueta } from '@/tipos';
 
@@ -164,23 +161,6 @@ export default function Contatos() {
     setModalAberto(true);
   };
 
-  // ---------------------------------------------------------------------------
-  // Erro
-  // ---------------------------------------------------------------------------
-  if (erro) {
-    return (
-      <div className="flex h-full">
-        <div className="flex-1 flex items-center justify-center">
-          <EstadoErro
-            titulo="Erro ao carregar contatos"
-            mensagem="Nao foi possivel carregar a lista de contatos"
-            onTentarNovamente={() => recarregar()}
-          />
-        </div>
-      </div>
-    );
-  }
-
   const contatos = contatosData?.dados || [];
   const etiquetas: Etiqueta[] = etiquetasData || [];
 
@@ -202,122 +182,134 @@ export default function Contatos() {
   };
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar Secundaria - Filtros */}
-      <SidebarSecundaria largura="sm">
-        <CabecalhoSidebar
-          titulo="Contatos"
-          subtitulo={`${contatos.length} contatos`}
-          acoes={
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleNovo}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          }
-        />
+    <PageLayout
+      titulo="Contatos"
+      subtitulo="Gerencie seus contatos"
+      icone={<Users className="h-5 w-5" />}
+      acoes={
+        <Button onClick={handleNovo}>
+          <Plus className="mr-2 h-4 w-4" />
+          Novo Contato
+        </Button>
+      }
+      sidebarWidth="sm"
+      sidebar={
+        <>
+          <CabecalhoSidebar
+            titulo="Contatos"
+            subtitulo={`${contatos.length} contatos`}
+            acoes={
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleNovo}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            }
+          />
 
-        <BuscaSidebar
-          valor={busca}
-          onChange={setBusca}
-          placeholder="Buscar contatos..."
-        />
+          <BuscaSidebar
+            valor={busca}
+            onChange={setBusca}
+            placeholder="Buscar contatos..."
+          />
 
-        <SecaoSidebar titulo="Filtros">
-          <ItemSidebar
-            icone={<Users className="h-4 w-4" />}
-            label="Todos"
-            badge={contadores.todos}
-            ativo={filtroAtivo === 'todos'}
-            onClick={() => setFiltroAtivo('todos')}
-          />
-          <ItemSidebar
-            icone={<User className="h-4 w-4" />}
-            label="Ativos"
-            badge={contadores.ativos}
-            ativo={filtroAtivo === 'ativos'}
-            onClick={() => setFiltroAtivo('ativos')}
-          />
-          <ItemSidebar
-            icone={<User className="h-4 w-4" />}
-            label="Inativos"
-            badge={contadores.inativos}
-            ativo={filtroAtivo === 'inativos'}
-            onClick={() => setFiltroAtivo('inativos')}
-          />
-          <ItemSidebar
-            icone={<Star className="h-4 w-4" />}
-            label="Favoritos"
-            badge={contadores.favoritos}
-            ativo={filtroAtivo === 'favoritos'}
-            onClick={() => setFiltroAtivo('favoritos')}
-          />
-          <ItemSidebar
-            icone={<Clock className="h-4 w-4" />}
-            label="Recentes"
-            badge={contadores.recentes}
-            ativo={filtroAtivo === 'recentes'}
-            onClick={() => setFiltroAtivo('recentes')}
-          />
-        </SecaoSidebar>
-
-        <SeparadorSidebar />
-
-        <SecaoSidebar titulo="Etiquetas">
-          <ItemSidebar
-            icone={<Tag className="h-4 w-4" />}
-            label="Todas as etiquetas"
-            ativo={etiquetaSelecionada === null}
-            onClick={() => setEtiquetaSelecionada(null)}
-          />
-          {etiquetas.map((etiqueta) => (
+          <SecaoSidebar titulo="Filtros">
             <ItemSidebar
-              key={etiqueta.id}
-              icone={
-                <div
-                  className="h-3 w-3 rounded-full"
-                  style={{ backgroundColor: etiqueta.cor }}
-                />
-              }
-              label={etiqueta.nome}
-              ativo={etiquetaSelecionada === etiqueta.id}
-              onClick={() => setEtiquetaSelecionada(etiqueta.id)}
+              icone={<Users className="h-4 w-4" />}
+              label="Todos"
+              badge={contadores.todos}
+              ativo={filtroAtivo === 'todos'}
+              onClick={() => setFiltroAtivo('todos')}
             />
-          ))}
-        </SecaoSidebar>
-      </SidebarSecundaria>
+            <ItemSidebar
+              icone={<User className="h-4 w-4" />}
+              label="Ativos"
+              badge={contadores.ativos}
+              ativo={filtroAtivo === 'ativos'}
+              onClick={() => setFiltroAtivo('ativos')}
+            />
+            <ItemSidebar
+              icone={<User className="h-4 w-4" />}
+              label="Inativos"
+              badge={contadores.inativos}
+              ativo={filtroAtivo === 'inativos'}
+              onClick={() => setFiltroAtivo('inativos')}
+            />
+            <ItemSidebar
+              icone={<Star className="h-4 w-4" />}
+              label="Favoritos"
+              badge={contadores.favoritos}
+              ativo={filtroAtivo === 'favoritos'}
+              onClick={() => setFiltroAtivo('favoritos')}
+            />
+            <ItemSidebar
+              icone={<Clock className="h-4 w-4" />}
+              label="Recentes"
+              badge={contadores.recentes}
+              ativo={filtroAtivo === 'recentes'}
+              onClick={() => setFiltroAtivo('recentes')}
+            />
+          </SecaoSidebar>
 
-      {/* Conteudo Principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CabecalhoPagina
-          titulo="Contatos"
-          subtitulo="Gerencie seus contatos"
-          icone={<Users className="h-5 w-5" />}
-          acoes={
-            <Button onClick={handleNovo}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Contato
-            </Button>
-          }
+          <SeparadorSidebar />
+
+          <SecaoSidebar titulo="Etiquetas">
+            <ItemSidebar
+              icone={<Tag className="h-4 w-4" />}
+              label="Todas as etiquetas"
+              ativo={etiquetaSelecionada === null}
+              onClick={() => setEtiquetaSelecionada(null)}
+            />
+            {etiquetas.map((etiqueta) => (
+              <ItemSidebar
+                key={etiqueta.id}
+                icone={
+                  <div
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: etiqueta.cor }}
+                  />
+                }
+                label={etiqueta.nome}
+                ativo={etiquetaSelecionada === etiqueta.id}
+                onClick={() => setEtiquetaSelecionada(etiqueta.id)}
+              />
+            ))}
+          </SecaoSidebar>
+        </>
+      }
+    >
+      {/* Estados de erro/loading/vazio */}
+      {erro ? (
+        <EmptyState
+          variant="error"
+          title="Erro ao carregar contatos"
+          description="Não foi possível carregar a lista de contatos"
+          primaryAction={{
+            label: 'Tentar novamente',
+            onClick: () => recarregar(),
+          }}
         />
-
-        {/* Area de Conteudo */}
-        <div className="flex-1 overflow-auto p-6">
-          {carregando ? (
-            <EstadoCarregando texto="Carregando contatos..." />
-          ) : contatosFiltrados.length === 0 ? (
-            busca ? (
-              <EstadoBuscaVazia
-                termoBusca={busca}
-                onLimpar={() => setBusca('')}
-              />
-            ) : (
-              <EstadoVazio
-                titulo="Nenhum contato"
-                descricao="Crie seu primeiro contato para comecar"
-                icone={<User className="h-16 w-16" />}
-                acao={{ label: 'Novo Contato', onClick: handleNovo }}
-              />
-            )
-          ) : (
+      ) : carregando ? (
+        <LoadingState variant="page" text="Carregando contatos..." />
+      ) : contatosFiltrados.length === 0 ? (
+        busca ? (
+          <EmptyState
+            variant="search"
+            title="Nenhum resultado encontrado"
+            description={`Não encontramos resultados para "${busca}". Tente usar outros termos.`}
+            primaryAction={{
+              label: 'Limpar busca',
+              onClick: () => setBusca(''),
+            }}
+          />
+        ) : (
+          <EmptyState
+            variant="default"
+            title="Nenhum contato"
+            description="Crie seu primeiro contato para começar"
+            icon={<User className="h-16 w-16" />}
+            primaryAction={{ label: 'Novo Contato', onClick: handleNovo }}
+          />
+        )
+      ) : (
             <GridCards colunas={3}>
               {contatosFiltrados.map((contato) => (
                 <CardItem
@@ -378,8 +370,6 @@ export default function Contatos() {
               ))}
             </GridCards>
           )}
-        </div>
-      </div>
 
       {/* Form Modal */}
       {(modalAberto || contatoEditando) && (
@@ -436,6 +426,6 @@ export default function Contatos() {
           </Card>
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

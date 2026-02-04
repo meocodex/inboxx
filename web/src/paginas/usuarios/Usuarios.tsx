@@ -22,20 +22,17 @@ import { Label } from '@/componentes/ui/label';
 import { Badge } from '@/componentes/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/componentes/ui/card';
 import {
-  SidebarSecundaria,
+  PageLayout,
   CabecalhoSidebar,
   SecaoSidebar,
   ItemSidebar,
   SeparadorSidebar,
   BuscaSidebar,
-  CabecalhoPagina,
   CardItem,
   CardItemAvatar,
   GridCards,
-  EstadoVazio,
-  EstadoCarregando,
-  EstadoErro,
-  EstadoBuscaVazia,
+  EmptyState,
+  LoadingState,
 } from '@/componentes/layout';
 import type { Usuario, Perfil, Equipe } from '@/tipos';
 
@@ -200,21 +197,6 @@ export default function Usuarios() {
 
   // ---------------------------------------------------------------------------
   // Erro
-  // ---------------------------------------------------------------------------
-  if (erro) {
-    return (
-      <div className="flex h-full">
-        <div className="flex-1 flex items-center justify-center">
-          <EstadoErro
-            titulo="Erro ao carregar usuarios"
-            mensagem="Nao foi possivel carregar a lista"
-            onTentarNovamente={() => recarregar()}
-          />
-        </div>
-      </div>
-    );
-  }
-
   const usuarios = usuariosData?.dados || [];
   const listaPerfis: Perfil[] = perfis || [];
   const listaEquipes: Equipe[] = equipes || [];
@@ -236,125 +218,137 @@ export default function Usuarios() {
   };
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar Secundaria - Filtros */}
-      <SidebarSecundaria largura="sm">
-        <CabecalhoSidebar
-          titulo="Usuarios"
-          subtitulo={`${usuarios.length} usuarios`}
-          acoes={
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={abrirCriar}>
-              <UserPlus className="h-4 w-4" />
-            </Button>
-          }
-        />
-
-        <BuscaSidebar
-          valor={busca}
-          onChange={setBusca}
-          placeholder="Buscar usuarios..."
-        />
-
-        <SecaoSidebar titulo="Status">
-          <ItemSidebar
-            icone={<Users className="h-4 w-4" />}
-            label="Todos"
-            badge={contadores.todos}
-            ativo={filtroAtivo === 'todos'}
-            onClick={() => setFiltroAtivo('todos')}
+    <PageLayout
+      titulo="Usuarios"
+      subtitulo="Gerencie os usuarios do sistema"
+      icone={<Users className="h-5 w-5" />}
+      acoes={
+        <Button onClick={abrirCriar}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Novo Usuario
+        </Button>
+      }
+      sidebarWidth="sm"
+      sidebar={
+        <>
+          <CabecalhoSidebar
+            titulo="Usuarios"
+            subtitulo={`${usuarios.length} usuarios`}
+            acoes={
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={abrirCriar}>
+                <UserPlus className="h-4 w-4" />
+              </Button>
+            }
           />
-          <ItemSidebar
-            icone={<UserCheck className="h-4 w-4" />}
-            label="Ativos"
-            badge={contadores.ativos}
-            ativo={filtroAtivo === 'ativos'}
-            onClick={() => setFiltroAtivo('ativos')}
-          />
-          <ItemSidebar
-            icone={<UserX className="h-4 w-4" />}
-            label="Inativos"
-            badge={contadores.inativos}
-            ativo={filtroAtivo === 'inativos'}
-            onClick={() => setFiltroAtivo('inativos')}
-          />
-        </SecaoSidebar>
 
-        <SeparadorSidebar />
-
-        <SecaoSidebar titulo="Perfis">
-          <ItemSidebar
-            icone={<Shield className="h-4 w-4" />}
-            label="Todos os perfis"
-            ativo={perfilSelecionado === null}
-            onClick={() => setPerfilSelecionado(null)}
+          <BuscaSidebar
+            valor={busca}
+            onChange={setBusca}
+            placeholder="Buscar usuarios..."
           />
-          {listaPerfis.map((perfil) => (
+
+          <SecaoSidebar titulo="Status">
             <ItemSidebar
-              key={perfil.id}
+              icone={<Users className="h-4 w-4" />}
+              label="Todos"
+              badge={contadores.todos}
+              ativo={filtroAtivo === 'todos'}
+              onClick={() => setFiltroAtivo('todos')}
+            />
+            <ItemSidebar
+              icone={<UserCheck className="h-4 w-4" />}
+              label="Ativos"
+              badge={contadores.ativos}
+              ativo={filtroAtivo === 'ativos'}
+              onClick={() => setFiltroAtivo('ativos')}
+            />
+            <ItemSidebar
+              icone={<UserX className="h-4 w-4" />}
+              label="Inativos"
+              badge={contadores.inativos}
+              ativo={filtroAtivo === 'inativos'}
+              onClick={() => setFiltroAtivo('inativos')}
+            />
+          </SecaoSidebar>
+
+          <SeparadorSidebar />
+
+          <SecaoSidebar titulo="Perfis">
+            <ItemSidebar
               icone={<Shield className="h-4 w-4" />}
-              label={perfil.nome}
-              badge={usuarios.filter((u) => u.perfilId === perfil.id).length}
-              ativo={perfilSelecionado === perfil.id}
-              onClick={() => setPerfilSelecionado(perfil.id)}
+              label="Todos os perfis"
+              ativo={perfilSelecionado === null}
+              onClick={() => setPerfilSelecionado(null)}
             />
-          ))}
-        </SecaoSidebar>
+            {listaPerfis.map((perfil) => (
+              <ItemSidebar
+                key={perfil.id}
+                icone={<Shield className="h-4 w-4" />}
+                label={perfil.nome}
+                badge={usuarios.filter((u) => u.perfilId === perfil.id).length}
+                ativo={perfilSelecionado === perfil.id}
+                onClick={() => setPerfilSelecionado(perfil.id)}
+              />
+            ))}
+          </SecaoSidebar>
 
-        <SeparadorSidebar />
+          <SeparadorSidebar />
 
-        <SecaoSidebar titulo="Equipes">
-          <ItemSidebar
-            icone={<UsersRound className="h-4 w-4" />}
-            label="Todas as equipes"
-            ativo={equipeSelecionada === null}
-            onClick={() => setEquipeSelecionada(null)}
-          />
-          {listaEquipes.map((equipe) => (
+          <SecaoSidebar titulo="Equipes">
             <ItemSidebar
-              key={equipe.id}
               icone={<UsersRound className="h-4 w-4" />}
-              label={equipe.nome}
-              badge={usuarios.filter((u) => u.equipeId === equipe.id).length}
-              ativo={equipeSelecionada === equipe.id}
-              onClick={() => setEquipeSelecionada(equipe.id)}
+              label="Todas as equipes"
+              ativo={equipeSelecionada === null}
+              onClick={() => setEquipeSelecionada(null)}
             />
-          ))}
-        </SecaoSidebar>
-      </SidebarSecundaria>
-
-      {/* Conteudo Principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CabecalhoPagina
-          titulo="Usuarios"
-          subtitulo="Gerencie os usuarios do sistema"
-          icone={<Users className="h-5 w-5" />}
-          acoes={
-            <Button onClick={abrirCriar}>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Novo Usuario
-            </Button>
-          }
+            {listaEquipes.map((equipe) => (
+              <ItemSidebar
+                key={equipe.id}
+                icone={<UsersRound className="h-4 w-4" />}
+                label={equipe.nome}
+                badge={usuarios.filter((u) => u.equipeId === equipe.id).length}
+                ativo={equipeSelecionada === equipe.id}
+                onClick={() => setEquipeSelecionada(equipe.id)}
+              />
+            ))}
+          </SecaoSidebar>
+        </>
+      }
+    >
+      {/* Estados de erro/loading/vazio */}
+      {erro ? (
+        <EmptyState
+          variant="error"
+          title="Erro ao carregar usuarios"
+          description="Não foi possível carregar a lista"
+          primaryAction={{
+            label: 'Tentar novamente',
+            onClick: () => recarregar(),
+          }}
         />
-
-        {/* Area de Conteudo */}
-        <div className="flex-1 overflow-auto p-6">
-          {carregando ? (
-            <EstadoCarregando texto="Carregando usuarios..." />
-          ) : usuariosFiltrados.length === 0 ? (
-            busca ? (
-              <EstadoBuscaVazia
-                termoBusca={busca}
-                onLimpar={() => setBusca('')}
-              />
-            ) : (
-              <EstadoVazio
-                titulo="Nenhum usuario"
-                descricao="Crie o primeiro usuario do sistema"
-                icone={<User className="h-16 w-16" />}
-                acao={{ label: 'Novo Usuario', onClick: abrirCriar }}
-              />
-            )
-          ) : (
+      ) : carregando ? (
+        <LoadingState variant="page" text="Carregando usuarios..." />
+      ) : usuariosFiltrados.length === 0 ? (
+        busca ? (
+          <EmptyState
+            variant="search"
+            title="Nenhum resultado encontrado"
+            description={`Não encontramos resultados para "${busca}". Tente usar outros termos.`}
+            primaryAction={{
+              label: 'Limpar busca',
+              onClick: () => setBusca(''),
+            }}
+          />
+        ) : (
+          <EmptyState
+            variant="default"
+            title="Nenhum usuario"
+            description="Crie o primeiro usuario do sistema"
+            icon={<User className="h-16 w-16" />}
+            primaryAction={{ label: 'Novo Usuario', onClick: abrirCriar }}
+          />
+        )
+      ) : (
             <GridCards colunas={2}>
               {usuariosFiltrados.map((usuario) => (
                 <CardItem
@@ -407,8 +401,6 @@ export default function Usuarios() {
               ))}
             </GridCards>
           )}
-        </div>
-      </div>
 
       {/* Modal */}
       {modalAberto && (
@@ -481,6 +473,6 @@ export default function Usuarios() {
           </Card>
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/componentes/ui/select';
-import { Carregando } from '@/componentes/comum/Carregando';
+import { LoadingState } from '@/componentes/layout';
 import { Vazio } from '@/componentes/comum/ErroMensagem';
 import { ItemConversa } from './ItemConversa';
 import { TipoCanal } from '@/tipos';
@@ -272,7 +272,7 @@ export const ListaConversas = memo(({
       <ScrollArea className="flex-1">
         {carregando ? (
           <div className="flex items-center justify-center h-40">
-            <Carregando texto="Carregando..." />
+            <LoadingState variant="spinner" text="Carregando..." />
           </div>
         ) : conversasFiltradas.length === 0 ? (
           <Vazio
