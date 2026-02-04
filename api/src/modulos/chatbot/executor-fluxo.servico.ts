@@ -4,12 +4,12 @@
 
 import crypto from 'node:crypto';
 import axios from 'axios';
-import { db } from '../../infraestrutura/banco/db.js';
+import { db } from '../../infraestrutura/banco/drizzle.servico.js';
 import { execucoesFluxo, conversas, conexoes, contatos } from '../../infraestrutura/banco/schema/index.js';
 import { eq, and } from 'drizzle-orm';
 import { motorFluxoServico } from './motor-fluxo.servico.js';
 import { enviarTexto } from '../whatsapp/whatsapp.servico.js';
-import { ErroNaoEncontrado } from '../../compartilhado/erros/index.js';
+import { ErroNaoEncontrado, ErroValidacao } from '../../compartilhado/erros/index.js';
 import { logger } from '../../compartilhado/utilitarios/logger.js';
 import { enviarJob } from '../../infraestrutura/filas/index.js';
 
@@ -67,6 +67,10 @@ class ExecutorFluxo {
     });
 
     if (!conversa) throw new ErroNaoEncontrado('Conversa não encontrada');
+
+    if (!conversa.conexaoId) {
+      throw new ErroValidacao('Conversa sem conexão ativa. Não é possível executar ações de chatbot.');
+    }
 
     const conexao = await db.query.conexoes.findFirst({
       where: and(eq(conexoes.id, conversa.conexaoId), eq(conexoes.clienteId, clienteId)),

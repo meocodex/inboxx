@@ -150,7 +150,8 @@ export default function Conversas() {
     contato: c.contato,
     ultimaMensagem: c.ultimaMensagem,
     naoLidas: c.naoLidas,
-    atualizadoEm: c.atualizadoEm,
+    ultimaMensagemEm: c.ultimaMensagemEm || null,
+    atualizadoEm: c.atualizadoEm || c.criadoEm || null,
   }));
 
   const mensagens: Mensagem[] = mensagensData?.dados || [];
@@ -159,7 +160,7 @@ export default function Conversas() {
   const contadoresSidebar = {
     inbox: conversas.length,
     chamadas: 0,
-    resolvidos: conversas.filter(c => c.status === 'ENCERRADA').length,
+    resolvidos: conversas.filter(c => c.status === 'RESOLVIDA').length,
     pendentes: conversas.filter(c => c.status === 'AGUARDANDO').length,
     fixados: 0,
     arquivados: 0,

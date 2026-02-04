@@ -154,7 +154,7 @@ export const AreaChat = memo(({
     .join('')
     .toUpperCase();
 
-  const conversaEncerrada = conversa.status === 'ENCERRADA';
+  const conversaEncerrada = conversa.status === 'RESOLVIDA';
   const canalAtual = conversa.canal?.canal as TipoCanal | undefined;
   const gradiente = gerarCorGradiente(conversa.contato.nome);
 

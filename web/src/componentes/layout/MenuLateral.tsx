@@ -61,7 +61,7 @@ const itensMenu: ItemMenu[] = [
   { titulo: 'Kanban', icone: Kanban, href: '/kanban', permissao: 'kanban:*' },
   { titulo: 'Agenda', icone: Calendar, href: '/agenda', permissao: 'agendamento:*' },
   { titulo: 'Relatorios', icone: BarChart3, href: '/relatorios', permissao: 'relatorios:*' },
-  { titulo: 'Conexoes', icone: Smartphone, href: '/conexoes', permissao: 'conexoes:*' },
+  { titulo: 'Canais', icone: Smartphone, href: '/canais', permissao: 'conexoes:*' },
   { titulo: 'Usuarios', icone: UserCog, href: '/usuarios', permissao: 'usuarios:*' },
 ];
 
@@ -132,7 +132,7 @@ export const MenuLateral = memo(() => {
     <aside className="flex w-[70px] shrink-0 flex-col border-r bg-background">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b">
-        <span className="text-lg font-bold text-primary">CRM</span>
+        <span className="text-lg font-bold text-primary">Inboxx</span>
       </div>
 
       {/* Navegacao */}

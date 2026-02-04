@@ -1,14 +1,16 @@
 // =============================================================================
-// Tabelas: contatos, etiquetas, contatos_etiquetas
+// Tabelas: contatos, contatos_conexoes, etiquetas, contatos_etiquetas
 // =============================================================================
 
 import { pgTable, uuid, text, jsonb, boolean, timestamp, unique, index, primaryKey } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 import { clientes } from './clientes.js';
+import { conexoes } from './conexoes.js';
 import { conversas } from './conversas.js';
 import { cartoesKanban } from './kanban.js';
 import { compromissos } from './agendamento.js';
+import { canalConexaoEnum } from './enums.js';
 
 // ---- Contatos ----
 
@@ -33,9 +35,35 @@ export const contatos = pgTable('contatos', {
 export const contatosRelations = relations(contatos, ({ one, many }) => ({
   cliente: one(clientes, { fields: [contatos.clienteId], references: [clientes.id] }),
   etiquetas: many(contatosEtiquetas),
+  conexoes: many(contatosConexoes),
   conversas: many(conversas),
   cartoesKanban: many(cartoesKanban),
   compromissos: many(compromissos),
+}));
+
+// ---- Contatos Conexoes (pivot para preservar histórico) ----
+
+export const contatosConexoes = pgTable('contatos_conexoes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  contatoId: uuid('contato_id').references(() => contatos.id, { onDelete: 'cascade' }).notNull(),
+  conexaoId: uuid('conexao_id').references(() => conexoes.id, { onDelete: 'set null' }),
+  clienteId: uuid('cliente_id').references(() => clientes.id, { onDelete: 'cascade' }).notNull(),
+  identificador: text('identificador').notNull(), // telefone/instagram_id/etc
+  canal: canalConexaoEnum('canal').notNull(),
+  ativo: boolean('ativo').default(true).notNull(),
+  criadoEm: timestamp('criado_em', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('contatos_conexoes_cliente_idx').on(t.clienteId),
+  index('contatos_conexoes_conexao_idx').on(t.conexaoId),
+  index('contatos_conexoes_identificador_idx').on(t.clienteId, t.identificador),
+  unique('contatos_conexoes_unique').on(t.clienteId, t.conexaoId, t.identificador),
+]);
+
+export const contatosConexoesRelations = relations(contatosConexoes, ({ one, many }) => ({
+  contato: one(contatos, { fields: [contatosConexoes.contatoId], references: [contatos.id] }),
+  conexao: one(conexoes, { fields: [contatosConexoes.conexaoId], references: [conexoes.id] }),
+  cliente: one(clientes, { fields: [contatosConexoes.clienteId], references: [clientes.id] }),
+  conversas: many(conversas),
 }));
 
 // ---- Etiquetas ----

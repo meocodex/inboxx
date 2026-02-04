@@ -1,23 +1,61 @@
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export function formatarData(data: string | Date, formato = 'dd/MM/yyyy'): string {
-  if (formato === 'relative') {
-    return formatDistanceToNow(new Date(data), { addSuffix: true, locale: ptBR });
+export function formatarData(data: string | Date | null | undefined, formato = 'dd/MM/yyyy'): string {
+  if (!data) {
+    return '-';
   }
-  return format(new Date(data), formato, { locale: ptBR });
+
+  const dataObj = new Date(data);
+  if (isNaN(dataObj.getTime())) {
+    return 'Data inválida';
+  }
+
+  if (formato === 'relative') {
+    return formatDistanceToNow(dataObj, { addSuffix: true, locale: ptBR });
+  }
+  return format(dataObj, formato, { locale: ptBR });
 }
 
-export function formatarDataHora(data: string | Date): string {
-  return format(new Date(data), 'dd/MM/yyyy HH:mm', { locale: ptBR });
+export function formatarDataHora(data: string | Date | null | undefined): string {
+  if (!data) {
+    return '-';
+  }
+
+  const dataObj = new Date(data);
+  if (isNaN(dataObj.getTime())) {
+    return 'Data inválida';
+  }
+
+  return format(dataObj, 'dd/MM/yyyy HH:mm', { locale: ptBR });
 }
 
-export function formatarHora(data: string | Date): string {
-  return format(new Date(data), 'HH:mm');
+export function formatarHora(data: string | Date | null | undefined): string {
+  if (!data) {
+    return '-';
+  }
+
+  const dataObj = new Date(data);
+  if (isNaN(dataObj.getTime())) {
+    return 'Hora inválida';
+  }
+
+  return format(dataObj, 'HH:mm');
 }
 
-export function formatarTempoRelativo(data: string | Date): string {
-  return formatDistanceToNow(new Date(data), { addSuffix: true, locale: ptBR });
+export function formatarTempoRelativo(data: string | Date | null | undefined): string {
+  if (!data) {
+    return 'Nunca';
+  }
+
+  const dataObj = new Date(data);
+
+  // Validar se a data é válida
+  if (isNaN(dataObj.getTime())) {
+    return 'Data inválida';
+  }
+
+  return formatDistanceToNow(dataObj, { addSuffix: true, locale: ptBR });
 }
 
 export function formatarMoeda(valor: number): string {

@@ -2,6 +2,7 @@ import axios, { type AxiosInstance } from 'axios';
 
 import { logger } from '../../../compartilhado/utilitarios/logger.js';
 import { agendarEnvioWhatsApp } from '../../../infraestrutura/rate-limiting/whatsapp-limiter.js';
+import { extrairErroAxios } from '../../../compartilhado/utilitarios/axios.utilitarios.js';
 import type { IProvedorWhatsApp, EnviarMensagemOpcoes } from './provedor.interface.js';
 import type {
   ConteudoMensagem,
@@ -72,7 +73,7 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
           timestamp: new Date(),
         };
       } catch (erro) {
-        const mensagemErro = this.extrairErro(erro);
+        const mensagemErro = extrairErroAxios(erro);
         logger.error({ erro: mensagemErro, telefone }, 'UaiZap: Erro ao enviar mensagem');
 
         return {
@@ -261,7 +262,7 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
         mimeType,
       };
     } catch (erro) {
-      const mensagemErro = this.extrairErro(erro);
+      const mensagemErro = extrairErroAxios(erro);
       logger.error({ erro: mensagemErro }, 'UaiZap: Erro ao fazer upload de midia');
       throw new Error(mensagemErro);
     }
@@ -284,7 +285,7 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
         tamanho: response.data.size,
       };
     } catch (erro) {
-      const mensagemErro = this.extrairErro(erro);
+      const mensagemErro = extrairErroAxios(erro);
       logger.error({ erro: mensagemErro, mediaId }, 'UaiZap: Erro ao obter midia');
       throw new Error(mensagemErro);
     }
@@ -308,7 +309,7 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
 
       return Buffer.from(response.data);
     } catch (erro) {
-      const mensagemErro = this.extrairErro(erro);
+      const mensagemErro = extrairErroAxios(erro);
       logger.error({ erro: mensagemErro, mediaId }, 'UaiZap: Erro ao baixar midia');
       throw new Error(mensagemErro);
     }
@@ -337,7 +338,7 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
 
       logger.debug({ mensagemId }, 'UaiZap: Mensagem marcada como lida');
     } catch (erro) {
-      const mensagemErro = this.extrairErro(erro);
+      const mensagemErro = extrairErroAxios(erro);
       logger.error({ erro: mensagemErro, mensagemId }, 'UaiZap: Erro ao marcar como lida');
     }
   }
@@ -385,7 +386,7 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
         mensagem: conectado ? 'WhatsApp conectado' : `Status: ${status}`,
       };
     } catch (erro) {
-      const mensagemErro = this.extrairErro(erro);
+      const mensagemErro = extrairErroAxios(erro);
       logger.error({ erro: mensagemErro }, 'UaiZap: Erro ao verificar status');
 
       return {
@@ -407,7 +408,7 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
 
       logger.debug('UaiZap: Desconectado');
     } catch (erro) {
-      const mensagemErro = this.extrairErro(erro);
+      const mensagemErro = extrairErroAxios(erro);
       logger.error({ erro: mensagemErro }, 'UaiZap: Erro ao desconectar');
     }
   }
@@ -465,7 +466,7 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
       logger.warn({ response: connectResponse.data }, 'UaiZap: Resposta sem QR Code');
       return null;
     } catch (erro) {
-      const mensagemErro = this.extrairErro(erro);
+      const mensagemErro = extrairErroAxios(erro);
       logger.error({ erro: mensagemErro }, 'UaiZap: Erro ao obter QR Code');
 
       // Se erro 404 ou similar, a instância pode precisar ser criada/reiniciada
@@ -502,7 +503,7 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
       logger.info({ hasQRCode: !!qrcode }, 'UaiZap: Reiniciado');
       return { qrcode, status: 'connecting' };
     } catch (erro) {
-      const mensagemErro = this.extrairErro(erro);
+      const mensagemErro = extrairErroAxios(erro);
       logger.error({ erro: mensagemErro }, 'UaiZap: Erro ao reiniciar');
 
       // Se erro 404 ou similar, a instância pode precisar ser criada/reiniciada
@@ -534,26 +535,4 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
     return `${limpo}@s.whatsapp.net`;
   }
 
-  private extrairErro(erro: unknown): string {
-    if (axios.isAxiosError(erro)) {
-      const data = erro.response?.data;
-      if (data?.mensagem) {
-        return data.mensagem;
-      }
-      if (data?.erro) {
-        return data.erro;
-      }
-      if (data?.message) {
-        return data.message;
-      }
-      if (data?.error) {
-        return data.error;
-      }
-      return erro.message;
-    }
-    if (erro instanceof Error) {
-      return erro.message;
-    }
-    return 'Erro desconhecido';
-  }
 }

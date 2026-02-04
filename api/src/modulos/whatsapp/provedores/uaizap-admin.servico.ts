@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
 import { logger } from '../../../compartilhado/utilitarios/logger.js';
 import { env } from '../../../configuracao/ambiente.js';
+import { extrairErroAxios } from '../../../compartilhado/utilitarios/axios.utilitarios.js';
 
 // =============================================================================
 // Serviço Admin UaiZap
@@ -122,7 +123,7 @@ export class UaiZapAdminServico {
         criadoEm: new Date(),
       };
     } catch (erro) {
-      const mensagem = this.extrairErro(erro);
+      const mensagem = extrairErroAxios(erro);
       logger.error(
         { erro: mensagem, nome: opcoes.nome },
         'UaiZapAdmin: Erro ao criar instância'
@@ -148,16 +149,24 @@ export class UaiZapAdminServico {
     try {
       const instanciaApi = this.criarInstanciaApi(token);
 
-      await instanciaApi.post('/instance/webhook', {
+      // Endpoint correto: POST /webhook (não /instance/webhook)
+      const response = await instanciaApi.post('/webhook', {
         enabled: true,
         url: webhookUrl,
         events: ['messages', 'connection', 'messages_update'],
       });
 
-      logger.info({ webhookUrl }, 'UaiZapAdmin: Webhook configurado');
+      // Verificar se foi habilitado corretamente
+      const webhook = Array.isArray(response.data) ? response.data[0] : response.data;
+      const habilitado = webhook?.enabled === true;
+
+      logger.info(
+        { webhookUrl, enabled: habilitado },
+        'UaiZapAdmin: Webhook configurado'
+      );
     } catch (erro) {
       logger.error(
-        { erro: this.extrairErro(erro) },
+        { erro: extrairErroAxios(erro) },
         'UaiZapAdmin: Erro ao configurar webhook (não fatal)'
       );
     }
@@ -181,7 +190,7 @@ export class UaiZapAdminServico {
       // Retornar lista vazia se não houver instâncias
       return [];
     } catch (erro) {
-      const mensagem = this.extrairErro(erro);
+      const mensagem = extrairErroAxios(erro);
       logger.error({ erro: mensagem }, 'UaiZapAdmin: Erro ao verificar status do servidor');
       return [];
     }
@@ -209,7 +218,7 @@ export class UaiZapAdminServico {
         );
       } catch (logoutError) {
         logger.warn(
-          { erro: this.extrairErro(logoutError), nomeInstancia },
+          { erro: extrairErroAxios(logoutError), nomeInstancia },
           'UaiZapAdmin: Falha no logout (instância pode já estar desconectada)'
         );
       }
@@ -226,7 +235,7 @@ export class UaiZapAdminServico {
           );
         } catch (deleteError) {
           logger.warn(
-            { erro: this.extrairErro(deleteError), nomeInstancia },
+            { erro: extrairErroAxios(deleteError), nomeInstancia },
             'UaiZapAdmin: Endpoint delete não disponível (instância apenas desconectada)'
           );
         }
@@ -237,7 +246,7 @@ export class UaiZapAdminServico {
         'UaiZapAdmin: Processo de exclusão concluído'
       );
     } catch (erro) {
-      const mensagem = this.extrairErro(erro);
+      const mensagem = extrairErroAxios(erro);
       logger.error(
         { erro: mensagem, nomeInstancia },
         'UaiZapAdmin: Erro ao excluir instância'
@@ -297,7 +306,7 @@ export class UaiZapAdminServico {
 
       return { qrcode, status: 'connecting' };
     } catch (erro) {
-      const mensagem = this.extrairErro(erro);
+      const mensagem = extrairErroAxios(erro);
       logger.error(
         { erro: mensagem },
         'UaiZapAdmin: Erro ao conectar instância'
@@ -324,7 +333,7 @@ export class UaiZapAdminServico {
 
       logger.info('UaiZapAdmin: Instância desconectada com sucesso');
     } catch (erro) {
-      const mensagem = this.extrairErro(erro);
+      const mensagem = extrairErroAxios(erro);
       logger.error(
         { erro: mensagem },
         'UaiZapAdmin: Erro ao desconectar instância'
@@ -384,7 +393,7 @@ export class UaiZapAdminServico {
       logger.warn({ response: connectResponse.data }, 'UaiZapAdmin: Resposta sem QR Code');
       return null;
     } catch (erro) {
-      const mensagem = this.extrairErro(erro);
+      const mensagem = extrairErroAxios(erro);
       logger.error(
         { erro: mensagem },
         'UaiZapAdmin: Erro ao obter QR Code'
@@ -426,7 +435,7 @@ export class UaiZapAdminServico {
         qrcode: instance?.qrcode,
       };
     } catch (erro) {
-      const mensagem = this.extrairErro(erro);
+      const mensagem = extrairErroAxios(erro);
       logger.error(
         { erro: mensagem },
         'UaiZapAdmin: Erro ao verificar status'
@@ -438,24 +447,6 @@ export class UaiZapAdminServico {
     }
   }
 
-  // ===========================================================================
-  // Utilitários
-  // ===========================================================================
-
-  private extrairErro(erro: unknown): string {
-    if (axios.isAxiosError(erro)) {
-      const data = erro.response?.data;
-      if (data?.mensagem) return data.mensagem;
-      if (data?.erro) return data.erro;
-      if (data?.message) return data.message;
-      if (data?.error) return data.error;
-      return erro.message;
-    }
-    if (erro instanceof Error) {
-      return erro.message;
-    }
-    return 'Erro desconhecido';
-  }
 }
 
 // Singleton

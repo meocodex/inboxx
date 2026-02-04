@@ -11,7 +11,7 @@ import {
   EstadoCarregando,
   EstadoErro,
 } from '@/componentes/layout';
-import { CardConexao, DialogConexao } from '@/componentes/conexoes';
+import { CardConexao, DialogConexao } from '@/componentes/canais';
 import type { StatusCanalConexao } from '@/tipos/conexao.tipos';
 
 // =============================================================================
@@ -67,8 +67,8 @@ export default function Conexoes() {
     return (
       <div className="flex h-full flex-col">
         <CabecalhoPagina
-          titulo="Conexoes"
-          subtitulo="Gerencie suas conexoes de canais"
+          titulo="Canais"
+          subtitulo="Gerencie suas conexões de canais"
           icone={<Smartphone className="h-5 w-5" />}
         />
         <div className="flex-1 flex items-center justify-center">
@@ -103,8 +103,8 @@ export default function Conexoes() {
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <CabecalhoPagina
-        titulo="Conexoes"
-        subtitulo="Gerencie suas conexoes de canais"
+        titulo="Canais"
+        subtitulo="Gerencie suas conexões de canais"
         icone={<Smartphone className="h-5 w-5" />}
         acoes={
           <div className="flex items-center gap-2">

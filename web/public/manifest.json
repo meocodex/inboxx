@@ -1,11 +1,11 @@
 {
-  "name": "CRM WhatsApp",
-  "short_name": "CRM WA",
-  "description": "CRM WhatsApp Omnichannel - Atendimento multicanal",
+  "name": "Inboxx",
+  "short_name": "Inboxx",
+  "description": "Inboxx - Atendimento Omnichannel",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#3B82F6",
+  "theme_color": "#00D97E",
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "pt-BR",
@@ -88,7 +88,7 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Dashboard do CRM"
+      "label": "Dashboard do Inboxx"
     },
     {
       "src": "/screenshots/mobile.png",

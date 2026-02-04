@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { LayoutPrincipal, ErrorBoundary } from '@/componentes/layout';
+import { LayoutPrincipal, ErrorBoundary, RotaProtegida } from '@/componentes/layout';
 import { CarregandoPagina } from '@/componentes/comum/Carregando';
 
 // =============================================================================
@@ -19,7 +19,7 @@ const Chatbot = lazy(() => import('@/paginas/chatbot/Chatbot'));
 const EditorFluxo = lazy(() => import('@/paginas/chatbot/EditorFluxo'));
 const Agenda = lazy(() => import('@/paginas/agenda/Agenda'));
 const Configuracoes = lazy(() => import('@/paginas/configuracoes/Configuracoes'));
-const Conexoes = lazy(() => import('@/paginas/conexoes/Conexoes'));
+const Canais = lazy(() => import('@/paginas/canais/Conexoes'));
 const Usuarios = lazy(() => import('@/paginas/usuarios/Usuarios'));
 
 // =============================================================================
@@ -49,7 +49,19 @@ export const router = createBrowserRouter([
     ),
   },
 
-  // Rotas Protegidas (Dashboard)
+  // Rota de Conversas - SEM MenuLateral (layout próprio)
+  {
+    path: '/conversas',
+    element: (
+      <RotaProtegida>
+        <SuspenseWrapper>
+          <Conversas />
+        </SuspenseWrapper>
+      </RotaProtegida>
+    ),
+  },
+
+  // Rotas Protegidas COM MenuLateral (LayoutPrincipal)
   {
     path: '/',
     element: <LayoutPrincipal />,
@@ -59,14 +71,6 @@ export const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <Dashboard />
-          </SuspenseWrapper>
-        ),
-      },
-      {
-        path: 'conversas',
-        element: (
-          <SuspenseWrapper>
-            <Conversas />
           </SuspenseWrapper>
         ),
       },
@@ -143,10 +147,10 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'conexoes',
+        path: 'canais',
         element: (
           <SuspenseWrapper>
-            <Conexoes />
+            <Canais />
           </SuspenseWrapper>
         ),
       },

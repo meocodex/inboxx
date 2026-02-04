@@ -93,6 +93,7 @@ export function DialogConexao({
   const [conexaoCriada, setConexaoCriada] = useState<CriarConexaoResposta | null>(null);
   const [statusAtual, setStatusAtual] = useState<StatusCanalConexao>('AGUARDANDO_QR');
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [confirmandoDesconexao, setConfirmandoDesconexao] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Forms
@@ -133,6 +134,7 @@ export function DialogConexao({
       setModo(conexaoId ? 'ver' : 'criar');
       setConexaoCriada(null);
       setConfirmandoExclusao(false);
+      setConfirmandoDesconexao(false);
       criarForm.reset({
         nome: '',
         canal: 'WHATSAPP',
@@ -149,6 +151,21 @@ export function DialogConexao({
       });
     }
   }, [conexao, editarForm]);
+
+  // Cleanup de timeouts para evitar memory leaks
+  useEffect(() => {
+    if (confirmandoExclusao) {
+      const timeoutId = setTimeout(() => setConfirmandoExclusao(false), 3000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [confirmandoExclusao]);
+
+  useEffect(() => {
+    if (confirmandoDesconexao) {
+      const timeoutId = setTimeout(() => setConfirmandoDesconexao(false), 3000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [confirmandoDesconexao]);
 
   // ---------------------------------------------------------------------------
   // Mutations
@@ -189,6 +206,7 @@ export function DialogConexao({
       handleFechar();
     },
     onError: () => mostrarErro('Erro', 'Não foi possível excluir a conexão'),
+    onSettled: () => setConfirmandoExclusao(false),
   });
 
   const testarMutation = useMutation({
@@ -218,13 +236,30 @@ export function DialogConexao({
     onError: () => mostrarErro('Erro', 'Não foi possível reconectar'),
   });
 
+  const desconectarMutation = useMutation({
+    mutationFn: () => conexoesServico.desconectar(conexaoId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conexoes'] });
+      queryClient.invalidateQueries({ queryKey: ['conexoes', conexaoId] });
+      mostrarSucesso('Desconectado', 'A conexão foi desconectada com sucesso');
+      setStatusAtual('DESCONECTADO');
+    },
+    onError: () => mostrarErro('Erro', 'Não foi possível desconectar a conexão'),
+    onSettled: () => setConfirmandoDesconexao(false),
+  });
+
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
   const handleFechar = () => {
+    // Não fechar durante operações em andamento
+    if (desconectarMutation.isPending || excluirMutation.isPending) {
+      return;
+    }
     setModo('criar');
     setConexaoCriada(null);
     setConfirmandoExclusao(false);
+    setConfirmandoDesconexao(false);
     criarForm.reset();
     editarForm.reset();
     onFechar();
@@ -252,7 +287,17 @@ export function DialogConexao({
       excluirMutation.mutate();
     } else {
       setConfirmandoExclusao(true);
-      setTimeout(() => setConfirmandoExclusao(false), 3000);
+      // Timeout gerenciado pelo useEffect para cleanup adequado
+    }
+  };
+
+  const handleDesconectar = () => {
+    if (confirmandoDesconexao) {
+      desconectarMutation.mutate();
+      // Reset gerenciado pelo onSettled da mutation
+    } else {
+      setConfirmandoDesconexao(true);
+      // Timeout gerenciado pelo useEffect para cleanup adequado
     }
   };
 
@@ -606,6 +651,27 @@ export function DialogConexao({
                 </Button>
               )}
 
+              {statusAtual === 'CONECTADO' && (
+                <Button
+                  variant={confirmandoDesconexao ? 'destructive' : 'outline'}
+                  onClick={handleDesconectar}
+                  disabled={desconectarMutation.isPending}
+                  aria-label={
+                    confirmandoDesconexao
+                      ? 'Confirmar desconexão'
+                      : 'Desconectar conexão WhatsApp'
+                  }
+                  aria-busy={desconectarMutation.isPending}
+                >
+                  {desconectarMutation.isPending ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                  ) : (
+                    <WifiOff className="mr-2 h-4 w-4" />
+                  )}
+                  {confirmandoDesconexao ? 'Confirmar?' : 'Desconectar'}
+                </Button>
+              )}
+
               <Button variant="outline" onClick={() => setModo('editar')}>
                 <Edit2 className="mr-2 h-4 w-4" />
                 Editar
@@ -615,6 +681,12 @@ export function DialogConexao({
                 variant={confirmandoExclusao ? 'destructive' : 'outline'}
                 onClick={handleExcluir}
                 disabled={excluirMutation.isPending}
+                aria-label={
+                  confirmandoExclusao
+                    ? 'Confirmar exclusão da conexão'
+                    : 'Excluir conexão'
+                }
+                aria-busy={excluirMutation.isPending}
               >
                 {excluirMutation.isPending ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />

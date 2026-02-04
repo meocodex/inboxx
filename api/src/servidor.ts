@@ -35,7 +35,7 @@ import { conexoesRotas } from './modulos/conexoes/index.js';
 import { contatosRotas } from './modulos/contatos/index.js';
 import { etiquetasRotas } from './modulos/etiquetas/index.js';
 import { conversasRotas } from './modulos/conversas/index.js';
-import { mensagensRotas, webhookMensagensRotas } from './modulos/mensagens/index.js';
+import { mensagensRotas } from './modulos/mensagens/index.js';
 import { notasInternasRotas } from './modulos/notas-internas/index.js';
 import { fluxosRotas, nosRotas, respostasRapidasRotas, registrarRotasTransicoes } from './modulos/chatbot/index.js';
 import { campanhasRotas, logsRotas, mensagensAgendadasRotas } from './modulos/campanhas/index.js';
@@ -231,9 +231,6 @@ export async function criarServidor(): Promise<FastifyInstance> {
       apiRouter.register(mensagensRotas, { prefix: '/conversas' });
       apiRouter.register(notasInternasRotas, { prefix: '/conversas' });
 
-      // Webhooks (endpoints para receber dados externos)
-      apiRouter.register(webhookMensagensRotas, { prefix: '/webhooks' });
-
       // WhatsApp Webhooks (Meta Cloud API e UaiZap)
       apiRouter.register(webhookRotas, { prefix: '/whatsapp/webhook' });
 
@@ -308,7 +305,7 @@ export async function criarServidor(): Promise<FastifyInstance> {
 
     // Dev sem frontend: mostra info da API
     return reply.send({
-      nome: 'CRM WhatsApp Omnichannel API',
+      nome: 'Inboxx API',
       versao: '1.0.0',
       documentacao: '/api/saude',
     });

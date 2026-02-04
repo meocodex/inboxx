@@ -8,14 +8,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CRM WhatsApp Omnichannel - A multi-tenant SaaS platform for WhatsApp/Instagram/Facebook customer service.
+**Inboxx** - Plataforma SaaS multi-tenant para atendimento omnichannel (WhatsApp/Instagram/Facebook).
 
-**Architecture:** White-label software sold via monthly IP-based licenses.
-- Licensor (you) → sells licenses by server IP
-- Super Admin (buyer) → installs on their server, creates clients
-- Clients → create users (Admin, Supervisor, Atendente)
+**Arquitetura:** Software white-label vendido via licenças mensais por IP.
+- Licenciador (você) → vende licenças por IP do servidor
+- Super Admin (comprador) → instala no servidor, cria clientes
+- Clientes → criam usuários (Admin, Supervisor, Atendente)
 
-**Data Isolation:** PostgreSQL Row-Level Security (RLS) per `cliente_id`.
+**Isolamento de Dados:** PostgreSQL Row-Level Security (RLS) por `cliente_id`.
+
+**Cor Principal:** `#00D97E` (HSL: 158 100% 42%)
 
 ## Current Project Status (Sprint 19-23 Complete)
 
@@ -194,8 +196,15 @@ POST /api/chatbot/fluxos/:fluxoId/compilar
 
 ### Database Tables (Portuguese, snake_case, plural)
 ```
-usuarios, conversas, mensagens_agendadas, contatos_etiquetas
+usuarios, conversas, mensagens_agendadas, contatos_etiquetas, contatos_conexoes
 ```
+
+### Key Architecture: contatos_conexoes (ContactInbox Pattern)
+A tabela `contatos_conexoes` implementa o padrão ContactInbox do Chatwoot:
+- Preserva histórico de conversas quando conexão é excluída
+- Permite que um contato tenha múltiplos identificadores em diferentes canais
+- `conversas.conexaoId` é nullable (SET NULL on delete)
+- `conversas.contatoConexaoId` referencia a tabela pivot
 
 ### Code Style
 - Max 300 lines per file (split if larger)
@@ -210,7 +219,7 @@ usuarios, conversas, mensagens_agendadas, contatos_etiquetas
 ## Project Structure
 
 ```
-crm-whatsapp/
+inboxx/
 ├── api/                        # Fastify backend
 │   ├── src/
 │   │   ├── configuracao/       # Environment, constants
@@ -324,10 +333,27 @@ interface TransicaoFluxo {
 ## Remaining Tasks
 
 - [ ] Production deployment (EasyPanel + Docker)
-- [ ] Database migration for chatbot transitions table (`npm run drizzle:push`)
+- [ ] Database migration - executar `npm run drizzle:push` para criar tabela `contatos_conexoes`
+- [ ] Script de migração de dados existentes para `contatos_conexoes`
 - [ ] End-to-end testing with real WhatsApp credentials
 - [ ] Performance optimization & load testing
 - [ ] Documentation for API consumers
+
+## Frontend Routes
+
+```
+/              → Dashboard (com MenuLateral)
+/conversas     → Conversas (SEM MenuLateral - layout próprio)
+/contatos      → Contatos (com MenuLateral)
+/canais        → Canais/Conexões (com MenuLateral) [renomeado de /conexoes]
+/chatbot       → Chatbot (com MenuLateral)
+/campanhas     → Campanhas (com MenuLateral)
+/kanban        → Kanban (com MenuLateral)
+/agenda        → Agenda (com MenuLateral)
+/relatorios    → Relatórios (com MenuLateral)
+/usuarios      → Usuários (com MenuLateral)
+/configuracoes → Configurações (com MenuLateral)
+```
 
 ## Security Rules
 

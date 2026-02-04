@@ -169,10 +169,10 @@ export const conexoesServico = {
         qrcodeGerado = instancia.qrcode ?? null;
 
         // URL do webhook para esta conexão (requer URL pública)
-        // Formato: /api/webhooks/uaizap/:instanciaId
+        // Formato: /api/whatsapp/webhook/uaizap/:instanciaId
         const baseUrl = env.BASE_URL || (env.HOST !== '0.0.0.0' ? `https://${env.HOST}` : null);
         if (baseUrl && instancia.id) {
-          webhookUrl = `${baseUrl}/api/webhooks/uaizap/${instancia.id}`;
+          webhookUrl = `${baseUrl}/api/whatsapp/webhook/uaizap/${instancia.id}`;
           // Configurar webhook na instância
           await uaiZapAdmin.configurarWebhook(instancia.token, webhookUrl);
           logger.info({ webhookUrl }, 'Webhook configurado');
@@ -185,7 +185,6 @@ export const conexoesServico = {
           apiUrl: env.UAIZAP_API_URL,
           apiKey: instancia.token, // Token da instância para autenticação
           instanciaId: instancia.id,
-          instanciaToken: instancia.token, // Guardar também explicitamente
           webhookUrl,
         } as any;
 
@@ -308,25 +307,26 @@ export const conexoesServico = {
 
     const conexao = result[0];
 
+    // Log quantidade de conversas que terão conexaoId = NULL após exclusão
     const [countResult] = await db
       .select({ total: count() })
       .from(conversas)
       .where(eq(conversas.conexaoId, id));
 
     if (countResult.total > 0) {
-      throw new ErroValidacao(
-        `Esta conexao possui ${countResult.total} conversa(s). ` +
-          'Arquive ou exclua as conversas antes de excluir a conexao.'
+      logger.info(
+        { conexaoId: id, totalConversas: countResult.total },
+        'Conexão será excluída. Conversas existentes serão preservadas com conexaoId = NULL'
       );
     }
 
     // Se provedor for UAIZAP, desconectar e excluir instância também
     if (conexao.provedor === 'UAIZAP' && env.UAIZAP_API_URL && env.UAIZAP_API_KEY) {
       const credenciais = conexao.credenciais as Record<string, string>;
-      const instanciaToken = credenciais.instanciaToken || credenciais.apiKey;
+      const apiKey = credenciais.apiKey;
       const instanciaId = credenciais.instanciaId;
 
-      if (instanciaToken) {
+      if (apiKey) {
         logger.info(
           { conexaoId: id, instanciaId, provedor: conexao.provedor },
           'Iniciando exclusão de conexão UAIZAP'
@@ -334,7 +334,7 @@ export const conexoesServico = {
 
         try {
           // Excluir instância do servidor (já faz logout internamente)
-          await uaiZapAdmin.excluirInstancia(instanciaToken, instanciaId);
+          await uaiZapAdmin.excluirInstancia(apiKey, instanciaId);
           logger.info(
             { conexaoId: id, instanciaId },
             'Conexão excluída com sucesso (banco local e servidor UAZAPI)'

@@ -53,7 +53,7 @@ export interface ConversaDocumento {
   contatoTelefone: string;
   ultimaMensagem: string | null;
   status: string;
-  conexaoId: string;
+  conexaoId: string | null; // Nullable - conexão pode ser excluída
   usuarioId: string | null;
   equipeId: string | null;
   ultimaMensagemEm: string | null;

@@ -108,7 +108,7 @@ export const ListaConversas = memo(({
     nao_lidas: conversas.filter((c) => c.naoLidas > 0).length,
     aguardando: conversas.filter((c) => c.status === 'AGUARDANDO').length,
     minhas: conversas.filter((c) => c.status === 'EM_ATENDIMENTO').length,
-    atribuidas: conversas.filter((c) => c.status !== 'ENCERRADA').length,
+    atribuidas: conversas.filter((c) => c.status !== 'RESOLVIDA').length,
   };
 
   const toggleFiltroRapido = (filtro: FiltroRapido) => {

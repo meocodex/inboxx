@@ -17,7 +17,27 @@ import type {
   UaiZapWebhookPayload,
   UaiZapMensagemRecebida,
   UaiZapStatusMensagem,
+  UaiZapMessageData,
+  UaiZapConnectionData,
 } from '../whatsapp.tipos.js';
+
+// =============================================================================
+// Utilitário: Parse de Credenciais
+// =============================================================================
+
+/**
+ * Parse credenciais que podem vir como string JSON ou objeto
+ */
+function parseCredenciais<T>(credenciais: unknown): T | null {
+  if (typeof credenciais === 'string') {
+    try {
+      return JSON.parse(credenciais) as T;
+    } catch {
+      return null;
+    }
+  }
+  return (credenciais as T) || null;
+}
 
 // =============================================================================
 // Verificacao do Webhook Meta (GET)
@@ -142,6 +162,15 @@ export async function receberWebhookUaiZap(
   reply: FastifyReply
 ): Promise<void> {
   const { instanciaId } = request.params;
+  const payload = request.body as UaiZapWebhookPayload;
+
+  // Log do payload recebido (sem dados sensíveis)
+  logger.info({
+    instanciaId,
+    evento: payload.event || payload.evento,
+    hasData: !!(payload.data || payload.dados),
+    hasSignature: !!request.headers['x-signature'],
+  }, 'Webhook UaiZap: Payload recebido');
 
   // Buscar todas conexoes UaiZap e filtrar pela instanciaId nas credenciais
   const conexoesResult = await db
@@ -150,8 +179,7 @@ export async function receberWebhookUaiZap(
     .where(eq(conexoes.provedor, 'UAIZAP'));
 
   const conexao = conexoesResult.find((c) => {
-    // instanciaId pode estar em credenciais ou configuracoes
-    const creds = c.credenciais as { instanciaId?: string } | null;
+    const creds = parseCredenciais<{ instanciaId?: string }>(c.credenciais);
     const config = c.configuracoes as { instanciaId?: string } | null;
     return creds?.instanciaId === instanciaId || config?.instanciaId === instanciaId;
   });
@@ -161,35 +189,28 @@ export async function receberWebhookUaiZap(
     return reply.status(404).send({ erro: 'Conexao nao encontrada' });
   }
 
-  // Validar assinatura HMAC (OBRIGATÓRIO)
+  // Validar assinatura HMAC (opcional - UaiZap pode não enviar)
   const assinatura = request.headers['x-signature'] as string;
-  // apiKey pode estar em credenciais ou configuracoes
-  const creds = conexao.credenciais as { apiKey?: string; instanciaToken?: string } | null;
+  const creds = parseCredenciais<{ apiKey?: string }>(conexao.credenciais);
   const config = conexao.configuracoes as { apiKey?: string } | null;
-  const apiKey = creds?.apiKey || creds?.instanciaToken || config?.apiKey;
+  const apiKey = creds?.apiKey || config?.apiKey;
 
-  if (!assinatura) {
-    logger.warn({ instanciaId, ip: request.ip }, 'Webhook UaiZap: Assinatura ausente');
-    return reply.status(401).send({ erro: 'Assinatura HMAC obrigatoria' });
+  // Se assinatura presente, validar
+  if (assinatura && apiKey) {
+    const rawBody = JSON.stringify(request.body);
+    if (!validarAssinaturaUaiZap(rawBody, assinatura, apiKey)) {
+      logger.warn({
+        instanciaId,
+        ip: request.ip,
+        userAgent: request.headers['user-agent'],
+        assinaturaFornecida: assinatura?.substring(0, 8) + '...',
+      }, 'Webhook UaiZap: Assinatura invalida');
+      return reply.status(401).send({ erro: 'Assinatura invalida' });
+    }
+  } else if (!assinatura) {
+    // UaiZap não envia assinatura por padrão - aceitar mas logar
+    logger.debug({ instanciaId, ip: request.ip }, 'Webhook UaiZap: Sem assinatura HMAC');
   }
-
-  if (!apiKey) {
-    logger.error({ instanciaId }, 'Webhook UaiZap: apiKey nao configurada');
-    return reply.status(500).send({ erro: 'Conexao mal configurada' });
-  }
-
-  const rawBody = JSON.stringify(request.body);
-  if (!validarAssinaturaUaiZap(rawBody, assinatura, apiKey)) {
-    logger.warn({
-      instanciaId,
-      ip: request.ip,
-      userAgent: request.headers['user-agent'],
-      assinaturaFornecida: assinatura?.substring(0, 8) + '...',
-    }, 'Tentativa de webhook não autorizado detectada');
-    return reply.status(401).send({ erro: 'Assinatura invalida' });
-  }
-
-  const payload = request.body as UaiZapWebhookPayload;
 
   // Responder imediatamente
   reply.status(200).send({ sucesso: true });
@@ -213,31 +234,146 @@ async function processarPayloadUaiZap(
   clienteId: string,
   conexaoId: string
 ): Promise<void> {
-  switch (payload.evento) {
-    case 'mensagem_recebida':
-      await processarMensagemUaiZap(
-        payload.dados as UaiZapMensagemRecebida,
+  // Detectar formato: novo (event/data) ou antigo (evento/dados)
+  const evento = payload.event || payload.evento;
+  const dados = payload.data || payload.dados;
+
+  logger.debug({ evento, hasData: !!dados }, 'Webhook UaiZap: Processando payload');
+
+  switch (evento) {
+    // Formato novo - mensagens
+    case 'messages':
+      await processarMensagemFormatoNovo(
+        dados as UaiZapMessageData,
         clienteId,
         conexaoId
       );
       break;
 
+    // Formato antigo - mensagem recebida
+    case 'mensagem_recebida':
+      await processarMensagemUaiZap(
+        dados as UaiZapMensagemRecebida,
+        clienteId,
+        conexaoId
+      );
+      break;
+
+    // Atualização de status de mensagem
+    case 'messages_update':
     case 'status_atualizado':
       await processarStatusUaiZap(
-        payload.dados as UaiZapStatusMensagem,
+        dados as UaiZapStatusMensagem,
         clienteId
       );
       break;
 
-    case 'conexao_atualizada':
+    // Eventos de conexão
     case 'connection':
     case 'connection.update':
-      await processarConexaoUaiZap(payload.dados, conexaoId);
+    case 'conexao_atualizada':
+      await processarConexaoUaiZap(dados, conexaoId);
       break;
 
     default:
-      logger.debug({ evento: payload.evento }, 'Webhook UaiZap: Evento ignorado');
+      logger.debug({ evento }, 'Webhook UaiZap: Evento ignorado');
   }
+}
+
+// =============================================================================
+// Processar Mensagem no Formato Novo (UaiZap Real)
+// =============================================================================
+
+async function processarMensagemFormatoNovo(
+  data: UaiZapMessageData,
+  clienteId: string,
+  conexaoId: string
+): Promise<void> {
+  // Ignorar mensagens enviadas por nós
+  if (data.key?.fromMe) {
+    logger.debug({ messageId: data.key?.id }, 'Webhook UaiZap: Ignorando mensagem enviada por nós');
+    return;
+  }
+
+  // Extrair dados da mensagem
+  const telefone = data.key?.remoteJid?.replace('@s.whatsapp.net', '').replace('@g.us', '') || '';
+  const isGrupo = data.key?.remoteJid?.includes('@g.us') || false;
+
+  // Extrair conteúdo da mensagem
+  const msg = data.message || {};
+  let tipo: 'texto' | 'imagem' | 'audio' | 'video' | 'documento' | 'localizacao' | 'contato' | 'sticker' = 'texto';
+  let conteudo = '';
+  let midiaUrl = data.mediaUrl;
+  let mimeType: string | undefined;
+
+  if (msg.conversation) {
+    tipo = 'texto';
+    conteudo = msg.conversation;
+  } else if (msg.extendedTextMessage?.text) {
+    tipo = 'texto';
+    conteudo = msg.extendedTextMessage.text;
+  } else if (msg.imageMessage) {
+    tipo = 'imagem';
+    conteudo = msg.imageMessage.caption || '[Imagem]';
+    midiaUrl = midiaUrl || msg.imageMessage.url;
+    mimeType = msg.imageMessage.mimetype;
+  } else if (msg.audioMessage) {
+    tipo = 'audio';
+    conteudo = '[Áudio]';
+    midiaUrl = midiaUrl || msg.audioMessage.url;
+    mimeType = msg.audioMessage.mimetype;
+  } else if (msg.videoMessage) {
+    tipo = 'video';
+    conteudo = msg.videoMessage.caption || '[Vídeo]';
+    midiaUrl = midiaUrl || msg.videoMessage.url;
+    mimeType = msg.videoMessage.mimetype;
+  } else if (msg.documentMessage) {
+    tipo = 'documento';
+    conteudo = msg.documentMessage.fileName || '[Documento]';
+    midiaUrl = midiaUrl || msg.documentMessage.url;
+    mimeType = msg.documentMessage.mimetype;
+  } else if (msg.stickerMessage) {
+    tipo = 'sticker';
+    conteudo = '[Sticker]';
+    midiaUrl = midiaUrl || msg.stickerMessage.url;
+    mimeType = msg.stickerMessage.mimetype;
+  } else if (msg.locationMessage) {
+    tipo = 'localizacao';
+    conteudo = msg.locationMessage.name || msg.locationMessage.address || '[Localização]';
+  } else if (msg.contactMessage) {
+    tipo = 'contato';
+    conteudo = msg.contactMessage.displayName || '[Contato]';
+  } else {
+    logger.debug({ message: msg }, 'Webhook UaiZap: Tipo de mensagem não reconhecido');
+    return;
+  }
+
+  // Converter para formato esperado pelo processador existente
+  const mensagemConvertida: UaiZapMensagemRecebida = {
+    id: data.key?.id || `msg_${Date.now()}`,
+    de: telefone,
+    para: '', // não relevante para mensagens recebidas
+    tipo,
+    conteudo,
+    midiaUrl,
+    mimeType,
+    timestamp: data.messageTimestamp
+      ? new Date(Number(data.messageTimestamp) * 1000).toISOString()
+      : new Date().toISOString(),
+    nomeRemetente: data.pushName,
+    isGrupo,
+    grupoId: isGrupo ? data.key?.remoteJid : undefined,
+    latitude: msg.locationMessage?.degreesLatitude,
+    longitude: msg.locationMessage?.degreesLongitude,
+  };
+
+  logger.info(
+    { telefone, tipo, conteudo: conteudo.substring(0, 50), pushName: data.pushName },
+    'Webhook UaiZap: Mensagem recebida (formato novo)'
+  );
+
+  // Usar processador existente
+  await processarMensagemUaiZap(mensagemConvertida, clienteId, conexaoId);
 }
 
 // =============================================================================

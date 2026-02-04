@@ -1,15 +1,22 @@
 import { memo, useEffect, useState } from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useUsuario, useCarregandoAuth, useAutenticacaoStore, useHidratado } from '@/stores';
 import { estaAutenticado } from '@/servicos/api';
-import { MenuLateral } from './MenuLateral';
 import { Carregando } from '@/componentes/comum/Carregando';
 
 // =============================================================================
-// Componente Layout Principal
+// Props
 // =============================================================================
 
-export const LayoutPrincipal = memo(() => {
+interface RotaProtegidaProps {
+  children: React.ReactNode;
+}
+
+// =============================================================================
+// Componente Rota Protegida
+// =============================================================================
+
+export const RotaProtegida = memo(({ children }: RotaProtegidaProps) => {
   const usuario = useUsuario();
   const carregando = useCarregandoAuth();
   const hidratado = useHidratado();
@@ -82,16 +89,9 @@ export const LayoutPrincipal = memo(() => {
   }
 
   // ---------------------------------------------------------------------------
-  // Autenticado com usuário = renderiza layout
+  // Autenticado com usuário = renderiza conteúdo
   // ---------------------------------------------------------------------------
-  return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <MenuLateral />
-      <main className="flex-1 overflow-auto">
-        <Outlet />
-      </main>
-    </div>
-  );
+  return <>{children}</>;
 });
 
-LayoutPrincipal.displayName = 'LayoutPrincipal';
+RotaProtegida.displayName = 'RotaProtegida';

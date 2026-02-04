@@ -152,6 +152,7 @@ export const conversasServico = {
           status: conversas.status,
           ultimaMensagemEm: conversas.ultimaMensagemEm,
           criadoEm: conversas.criadoEm,
+          atualizadoEm: conversas.atualizadoEm,
           contatoId: contatos.id,
           contatoNome: contatos.nome,
           contatoTelefone: contatos.telefone,
@@ -167,6 +168,8 @@ export const conversasServico = {
           // COUNT com LEFT JOIN (evita N+1 queries)
           totalMensagens: sql<number>`COUNT(DISTINCT ${mensagens.id})`.mapWith(Number),
           totalNotas: sql<number>`COUNT(DISTINCT ${notasInternas.id})`.mapWith(Number),
+          // Contador de mensagens nao lidas (direcao ENTRADA, sem lidoEm)
+          naoLidas: sql<number>`COUNT(DISTINCT CASE WHEN ${mensagens.direcao} = 'ENTRADA' AND ${mensagens.lidoEm} IS NULL THEN ${mensagens.id} END)`.mapWith(Number),
         })
         .from(conversas)
         .leftJoin(contatos, eq(conversas.contatoId, contatos.id))
@@ -196,6 +199,7 @@ export const conversasServico = {
       status: row.status,
       ultimaMensagemEm: row.ultimaMensagemEm,
       criadoEm: row.criadoEm,
+      atualizadoEm: row.atualizadoEm,
       contato: {
         id: row.contatoId,
         nome: row.contatoNome,
@@ -222,6 +226,7 @@ export const conversasServico = {
         : null,
       totalMensagens: row.totalMensagens,
       totalNotas: row.totalNotas,
+      naoLidas: row.naoLidas,
     }));
 
     const resultado = {
@@ -428,11 +433,15 @@ export const conversasServico = {
       .where(eq(contatos.id, conversaCriada.contatoId))
       .limit(1);
 
-    const [conexaoInfo] = await db
-      .select({ id: conexoes.id, nome: conexoes.nome, canal: conexoes.canal })
-      .from(conexoes)
-      .where(eq(conexoes.id, conversaCriada.conexaoId))
-      .limit(1);
+    let conexaoInfo: { id: string; nome: string; canal: string } | null = null;
+    if (conversaCriada.conexaoId) {
+      const [info] = await db
+        .select({ id: conexoes.id, nome: conexoes.nome, canal: conexoes.canal })
+        .from(conexoes)
+        .where(eq(conexoes.id, conversaCriada.conexaoId))
+        .limit(1);
+      conexaoInfo = info ?? null;
+    }
 
     // Sincronizar com Meilisearch
     enviarJob('busca.sincronizar', { operacao: 'indexar', indice: 'conversas', clienteId, documentoId: conversaCriada.id }).catch((erro) => {

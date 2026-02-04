@@ -189,12 +189,57 @@ export interface MetaErro {
 // Webhook Payload - UaiZap
 // =============================================================================
 
+// Formato real enviado pela API UaiZap (zapwixo.uazapi.com)
+export interface UaiZapWebhookPayloadReal {
+  event: 'messages' | 'messages_update' | 'connection' | 'presence' | 'call';
+  instance: string;
+  data: UaiZapMessageData | UaiZapConnectionData | unknown;
+}
+
+// Dados de mensagem no formato real da UaiZap
+export interface UaiZapMessageData {
+  key: {
+    remoteJid: string;
+    fromMe: boolean;
+    id: string;
+  };
+  pushName?: string;
+  messageTimestamp?: number | string;
+  message?: {
+    conversation?: string;
+    extendedTextMessage?: { text: string };
+    imageMessage?: { url?: string; caption?: string; mimetype?: string };
+    audioMessage?: { url?: string; mimetype?: string };
+    videoMessage?: { url?: string; caption?: string; mimetype?: string };
+    documentMessage?: { url?: string; fileName?: string; mimetype?: string };
+    stickerMessage?: { url?: string; mimetype?: string };
+    locationMessage?: { degreesLatitude?: number; degreesLongitude?: number; name?: string; address?: string };
+    contactMessage?: { displayName?: string; vcard?: string };
+  };
+  // Formato alternativo para mídia
+  base64?: string;
+  mediaUrl?: string;
+}
+
+// Dados de conexão
+export interface UaiZapConnectionData {
+  status?: string;
+  state?: string;
+  connected?: boolean;
+  loggedIn?: boolean;
+  qrcode?: string;
+}
+
+// Formato antigo (mantido para compatibilidade)
 export interface UaiZapWebhookPayload {
   // Eventos podem vir em diferentes formatos dependendo da versão/config do UazAPI
-  evento: 'mensagem_recebida' | 'status_atualizado' | 'conexao_atualizada' |
+  evento?: 'mensagem_recebida' | 'status_atualizado' | 'conexao_atualizada' |
           'connection' | 'connection.update' | 'messages' | 'messages_update';
-  instanciaId: string;
-  dados: UaiZapMensagemRecebida | UaiZapStatusMensagem | UaiZapStatusConexao | unknown;
+  event?: 'messages' | 'messages_update' | 'connection' | 'presence' | 'call';
+  instanciaId?: string;
+  instance?: string;
+  dados?: UaiZapMensagemRecebida | UaiZapStatusMensagem | UaiZapStatusConexao | unknown;
+  data?: UaiZapMessageData | UaiZapConnectionData | unknown;
 }
 
 export interface UaiZapMensagemRecebida {

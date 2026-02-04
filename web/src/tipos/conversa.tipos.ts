@@ -65,6 +65,7 @@ export interface Conversa {
   atendente?: UsuarioResumo | null;
   ultimaMensagem?: MensagemResumo | null;
   naoLidas: number;
+  ultimaMensagemEm: string | null;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -75,7 +76,8 @@ export interface ConversaResumo {
   contato: ContatoResumo;
   ultimaMensagem?: MensagemResumo | null;
   naoLidas: number;
-  atualizadoEm: string;
+  ultimaMensagemEm: string | null;
+  atualizadoEm: string | null;
 }
 
 // =============================================================================
@@ -87,6 +89,7 @@ export interface Mensagem {
   tipo: TipoMensagem;
   conteudo?: string | null;
   midiaUrl?: string | null;
+  midiaTipo?: string | null;
   origem: OrigemMensagem;
   lida: boolean;
   conversaId: string;

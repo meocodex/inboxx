@@ -1,10 +1,11 @@
 import { eq, and, notInArray, like, count } from 'drizzle-orm';
 
 import { db } from '../../../../infraestrutura/banco/drizzle.servico.js';
-import { contatos, conversas, mensagens } from '../../../../infraestrutura/banco/schema/index.js';
+import { contatos, contatosConexoes, conversas, mensagens, conexoes } from '../../../../infraestrutura/banco/schema/index.js';
 import { logger } from '../../../../compartilhado/utilitarios/logger.js';
 import { emitirParaConversa, emitirParaCliente } from '../../../../websocket/socket.gateway.js';
 import { chatbotGateway } from '../../../chatbot/chatbot.gateway.js';
+import { cacheConversas } from '../../../../infraestrutura/cache/redis.servico.js';
 import type {
   MetaMensagemRecebida,
   MetaWebhookValue,
@@ -87,6 +88,52 @@ async function processarMensagemMetaIndividual(
     logger.info({ contatoId: contatoDB.id, telefone }, 'Webhook: Novo contato criado');
   }
 
+  // Buscar conexão para obter o canal
+  const [conexao] = await db
+    .select({ canal: conexoes.canal })
+    .from(conexoes)
+    .where(eq(conexoes.id, conexaoId))
+    .limit(1);
+
+  // Buscar ou criar contatoConexao (pivot) - usando onConflictDoNothing para evitar race condition
+  const [contatoConexaoInserido] = await db
+    .insert(contatosConexoes)
+    .values({
+      clienteId,
+      contatoId: contatoDB.id,
+      conexaoId,
+      identificador: telefone,
+      canal: conexao?.canal || 'WHATSAPP',
+    })
+    .onConflictDoNothing({
+      target: [contatosConexoes.clienteId, contatosConexoes.conexaoId, contatosConexoes.identificador],
+    })
+    .returning();
+
+  let contatoConexao = contatoConexaoInserido;
+
+  // Se não retornou (já existia), buscar existente
+  if (!contatoConexao) {
+    const [existente] = await db
+      .select()
+      .from(contatosConexoes)
+      .where(
+        and(
+          eq(contatosConexoes.clienteId, clienteId),
+          eq(contatosConexoes.contatoId, contatoDB.id),
+          eq(contatosConexoes.conexaoId, conexaoId)
+        )
+      )
+      .limit(1);
+
+    contatoConexao = existente;
+  } else {
+    logger.info(
+      { contatoConexaoId: contatoConexao.id, telefone },
+      'Webhook: Novo contatoConexao criado'
+    );
+  }
+
   // Buscar ou criar conversa
   const [conversaExistente] = await db
     .select()
@@ -95,7 +142,7 @@ async function processarMensagemMetaIndividual(
       and(
         eq(conversas.clienteId, clienteId),
         eq(conversas.contatoId, contatoDB.id),
-        eq(conversas.conexaoId, conexaoId),
+        eq(conversas.contatoConexaoId, contatoConexao.id),
         notInArray(conversas.status, ['ARQUIVADA'])
       )
     )
@@ -110,6 +157,7 @@ async function processarMensagemMetaIndividual(
         clienteId,
         contatoId: contatoDB.id,
         conexaoId,
+        contatoConexaoId: contatoConexao.id,
         status: 'ABERTA',
       })
       .returning();
@@ -133,7 +181,7 @@ async function processarMensagemMetaIndividual(
   }
 
   // Extrair conteudo da mensagem
-  const { tipo, conteudo, midiaUrl } = extrairConteudoMeta(mensagemMeta);
+  const { tipo, conteudo, midiaUrl, midiaTipo } = extrairConteudoMeta(mensagemMeta);
 
   // Criar mensagem no banco (com proteção contra duplicatas)
   let mensagem;
@@ -146,6 +194,7 @@ async function processarMensagemMetaIndividual(
         tipo,
         conteudo,
         midiaUrl,
+        midiaTipo,
         direcao: 'ENTRADA',
         status: 'ENTREGUE',
         idExterno: mensagemMeta.id,
@@ -172,6 +221,9 @@ async function processarMensagemMetaIndividual(
     })
     .where(eq(conversas.id, conversa.id));
 
+  // Invalidar cache de conversas para refletir imediatamente no frontend
+  await cacheConversas.invalidar(`${clienteId}:*`);
+
   // Emitir evento WebSocket
   emitirParaConversa(conversa.id, 'nova_mensagem', {
     mensagem: {
@@ -179,6 +231,7 @@ async function processarMensagemMetaIndividual(
       tipo: mensagem.tipo,
       conteudo: mensagem.conteudo,
       midiaUrl: mensagem.midiaUrl,
+      midiaTipo: mensagem.midiaTipo,
       direcao: mensagem.direcao,
       status: mensagem.status,
       enviadoEm: mensagem.enviadoEm,
@@ -234,6 +287,7 @@ function extrairConteudoMeta(mensagem: MetaMensagemRecebida): {
   tipo: 'TEXTO' | 'IMAGEM' | 'AUDIO' | 'VIDEO' | 'DOCUMENTO' | 'LOCALIZACAO' | 'CONTATO' | 'STICKER';
   conteudo: string;
   midiaUrl?: string;
+  midiaTipo?: string;
 } {
   switch (mensagem.type) {
     case 'text':
@@ -247,6 +301,7 @@ function extrairConteudoMeta(mensagem: MetaMensagemRecebida): {
         tipo: 'IMAGEM',
         conteudo: mensagem.image?.caption || '[Imagem]',
         midiaUrl: `media:${mensagem.image?.id}`,
+        midiaTipo: mensagem.image?.mime_type,
       };
 
     case 'audio':
@@ -254,6 +309,7 @@ function extrairConteudoMeta(mensagem: MetaMensagemRecebida): {
         tipo: 'AUDIO',
         conteudo: '[Audio]',
         midiaUrl: `media:${mensagem.audio?.id}`,
+        midiaTipo: mensagem.audio?.mime_type,
       };
 
     case 'video':
@@ -261,6 +317,7 @@ function extrairConteudoMeta(mensagem: MetaMensagemRecebida): {
         tipo: 'VIDEO',
         conteudo: mensagem.video?.caption || '[Video]',
         midiaUrl: `media:${mensagem.video?.id}`,
+        midiaTipo: mensagem.video?.mime_type,
       };
 
     case 'document':
@@ -268,6 +325,7 @@ function extrairConteudoMeta(mensagem: MetaMensagemRecebida): {
         tipo: 'DOCUMENTO',
         conteudo: mensagem.document?.filename || '[Documento]',
         midiaUrl: `media:${mensagem.document?.id}`,
+        midiaTipo: mensagem.document?.mime_type,
       };
 
     case 'sticker':
@@ -275,6 +333,7 @@ function extrairConteudoMeta(mensagem: MetaMensagemRecebida): {
         tipo: 'STICKER',
         conteudo: '[Sticker]',
         midiaUrl: `media:${mensagem.sticker?.id}`,
+        midiaTipo: mensagem.sticker?.mime_type,
       };
 
     case 'location':
@@ -346,6 +405,52 @@ export async function processarMensagemUaiZap(
     logger.info({ contatoId: contatoDB.id, telefone }, 'Webhook: Novo contato criado');
   }
 
+  // Buscar conexão para obter o canal
+  const [conexao] = await db
+    .select({ canal: conexoes.canal })
+    .from(conexoes)
+    .where(eq(conexoes.id, conexaoId))
+    .limit(1);
+
+  // Buscar ou criar contatoConexao (pivot) - usando onConflictDoNothing para evitar race condition
+  const [contatoConexaoInserido] = await db
+    .insert(contatosConexoes)
+    .values({
+      clienteId,
+      contatoId: contatoDB.id,
+      conexaoId,
+      identificador: telefone,
+      canal: conexao?.canal || 'WHATSAPP',
+    })
+    .onConflictDoNothing({
+      target: [contatosConexoes.clienteId, contatosConexoes.conexaoId, contatosConexoes.identificador],
+    })
+    .returning();
+
+  let contatoConexao = contatoConexaoInserido;
+
+  // Se não retornou (já existia), buscar existente
+  if (!contatoConexao) {
+    const [existente] = await db
+      .select()
+      .from(contatosConexoes)
+      .where(
+        and(
+          eq(contatosConexoes.clienteId, clienteId),
+          eq(contatosConexoes.contatoId, contatoDB.id),
+          eq(contatosConexoes.conexaoId, conexaoId)
+        )
+      )
+      .limit(1);
+
+    contatoConexao = existente;
+  } else {
+    logger.info(
+      { contatoConexaoId: contatoConexao.id, telefone },
+      'Webhook: Novo contatoConexao criado (UaiZap)'
+    );
+  }
+
   // Buscar ou criar conversa
   const [conversaExistente] = await db
     .select()
@@ -354,7 +459,7 @@ export async function processarMensagemUaiZap(
       and(
         eq(conversas.clienteId, clienteId),
         eq(conversas.contatoId, contatoDB.id),
-        eq(conversas.conexaoId, conexaoId),
+        eq(conversas.contatoConexaoId, contatoConexao.id),
         notInArray(conversas.status, ['ARQUIVADA'])
       )
     )
@@ -369,6 +474,7 @@ export async function processarMensagemUaiZap(
         clienteId,
         contatoId: contatoDB.id,
         conexaoId,
+        contatoConexaoId: contatoConexao.id,
         status: 'ABERTA',
       })
       .returning();
@@ -391,7 +497,7 @@ export async function processarMensagemUaiZap(
   }
 
   // Extrair conteudo
-  const { tipo, conteudo, midiaUrl } = extrairConteudoUaiZap(mensagem);
+  const { tipo, conteudo, midiaUrl, midiaTipo } = extrairConteudoUaiZap(mensagem);
 
   // Criar mensagem (com proteção contra duplicatas)
   let mensagemDB;
@@ -404,6 +510,7 @@ export async function processarMensagemUaiZap(
         tipo,
         conteudo,
         midiaUrl,
+        midiaTipo,
         direcao: 'ENTRADA',
         status: 'ENTREGUE',
         idExterno: mensagem.id,
@@ -430,6 +537,9 @@ export async function processarMensagemUaiZap(
     })
     .where(eq(conversas.id, conversa.id));
 
+  // Invalidar cache de conversas para refletir imediatamente no frontend
+  await cacheConversas.invalidar(`${clienteId}:*`);
+
   // Emitir evento WebSocket
   emitirParaConversa(conversa.id, 'nova_mensagem', {
     mensagem: {
@@ -437,6 +547,7 @@ export async function processarMensagemUaiZap(
       tipo: mensagemDB.tipo,
       conteudo: mensagemDB.conteudo,
       midiaUrl: mensagemDB.midiaUrl,
+      midiaTipo: mensagemDB.midiaTipo,
       direcao: mensagemDB.direcao,
       status: mensagemDB.status,
       enviadoEm: mensagemDB.enviadoEm,
@@ -462,6 +573,7 @@ function extrairConteudoUaiZap(mensagem: UaiZapMensagemRecebida): {
   tipo: 'TEXTO' | 'IMAGEM' | 'AUDIO' | 'VIDEO' | 'DOCUMENTO' | 'LOCALIZACAO' | 'CONTATO' | 'STICKER';
   conteudo: string;
   midiaUrl?: string;
+  midiaTipo?: string;
 } {
   const tipoMap: Record<string, 'TEXTO' | 'IMAGEM' | 'AUDIO' | 'VIDEO' | 'DOCUMENTO' | 'LOCALIZACAO' | 'CONTATO' | 'STICKER'> = {
     texto: 'TEXTO',
@@ -485,6 +597,7 @@ function extrairConteudoUaiZap(mensagem: UaiZapMensagemRecebida): {
         tipo,
         conteudo: mensagem.caption || '[Imagem]',
         midiaUrl: mensagem.midiaUrl,
+        midiaTipo: mensagem.mimeType,
       };
 
     case 'audio':
@@ -492,6 +605,7 @@ function extrairConteudoUaiZap(mensagem: UaiZapMensagemRecebida): {
         tipo,
         conteudo: '[Audio]',
         midiaUrl: mensagem.midiaUrl,
+        midiaTipo: mensagem.mimeType,
       };
 
     case 'video':
@@ -499,6 +613,7 @@ function extrairConteudoUaiZap(mensagem: UaiZapMensagemRecebida): {
         tipo,
         conteudo: mensagem.caption || '[Video]',
         midiaUrl: mensagem.midiaUrl,
+        midiaTipo: mensagem.mimeType,
       };
 
     case 'documento':
@@ -506,6 +621,7 @@ function extrairConteudoUaiZap(mensagem: UaiZapMensagemRecebida): {
         tipo,
         conteudo: mensagem.nomeArquivo || '[Documento]',
         midiaUrl: mensagem.midiaUrl,
+        midiaTipo: mensagem.mimeType,
       };
 
     case 'sticker':
@@ -513,6 +629,7 @@ function extrairConteudoUaiZap(mensagem: UaiZapMensagemRecebida): {
         tipo,
         conteudo: '[Sticker]',
         midiaUrl: mensagem.midiaUrl,
+        midiaTipo: mensagem.mimeType,
       };
 
     case 'localizacao':

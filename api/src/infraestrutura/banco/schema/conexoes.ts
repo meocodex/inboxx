@@ -8,6 +8,7 @@ import { relations } from 'drizzle-orm';
 import { clientes } from './clientes.js';
 import { canalConexaoEnum, provedorConexaoEnum, statusConexaoEnum } from './enums.js';
 import { conversas } from './conversas.js';
+import { contatosConexoes } from './contatos.js';
 import { mensagensAgendadas } from './campanhas.js';
 
 export const conexoes = pgTable('conexoes', {
@@ -27,5 +28,6 @@ export const conexoes = pgTable('conexoes', {
 export const conexoesRelations = relations(conexoes, ({ one, many }) => ({
   cliente: one(clientes, { fields: [conexoes.clienteId], references: [clientes.id] }),
   conversas: many(conversas),
+  contatosConexoes: many(contatosConexoes),
   mensagensAgendadas: many(mensagensAgendadas),
 }));

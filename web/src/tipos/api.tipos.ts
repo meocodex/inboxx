@@ -39,7 +39,8 @@ export enum StatusConversa {
   ABERTA = 'ABERTA',
   EM_ATENDIMENTO = 'EM_ATENDIMENTO',
   AGUARDANDO = 'AGUARDANDO',
-  ENCERRADA = 'ENCERRADA',
+  RESOLVIDA = 'RESOLVIDA',
+  ARQUIVADA = 'ARQUIVADA',
 }
 
 export enum TipoMensagem {

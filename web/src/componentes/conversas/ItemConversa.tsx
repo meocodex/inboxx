@@ -44,14 +44,15 @@ const gerarCorGradiente = (nome: string): string => {
 // =============================================================================
 
 export const ItemConversa = memo(({ conversa, selecionada, onClick, canal }: ItemConversaProps) => {
-  const { contato, ultimaMensagem, naoLidas, atualizadoEm } = conversa;
+  const { contato, ultimaMensagem, naoLidas, ultimaMensagemEm, atualizadoEm } = conversa;
 
-  const iniciais = contato.nome
+  const iniciais = (contato.nome || '')
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .slice(0, 2)
     .join('')
-    .toUpperCase();
+    .toUpperCase() || '??';
 
   const temNaoLidas = naoLidas > 0;
   const gradiente = gerarCorGradiente(contato.nome);
@@ -97,7 +98,7 @@ export const ItemConversa = memo(({ conversa, selecionada, onClick, canal }: Ite
             {contato.nome}
           </span>
           <span className="text-[11px] text-muted-foreground shrink-0">
-            {formatarTempoRelativo(atualizadoEm)}
+            {formatarTempoRelativo(ultimaMensagemEm || atualizadoEm)}
           </span>
         </div>
 

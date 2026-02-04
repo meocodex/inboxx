@@ -1,4 +1,4 @@
-export { mensagensRotas, webhookMensagensRotas } from './mensagens.controlador.js';
+export { mensagensRotas } from './mensagens.controlador.js';
 export { mensagensServico } from './mensagens.servico.js';
 export {
   enviarMensagemBodySchema,

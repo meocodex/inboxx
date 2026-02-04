@@ -6,11 +6,9 @@ import {
   enviarMensagemBodySchema,
   listarMensagensQuerySchema,
   atualizarStatusMensagemBodySchema,
-  receberMensagemWebhookSchema,
   type EnviarMensagemDTO,
   type ListarMensagensQuery,
   type AtualizarStatusMensagemDTO,
-  type ReceberMensagemWebhookDTO,
 } from './mensagens.schema.js';
 
 // =============================================================================
@@ -127,46 +125,6 @@ export async function mensagensRotas(app: FastifyInstance) {
         sucesso: true,
         dados: mensagem,
       });
-    }
-  );
-}
-
-// =============================================================================
-// Rotas de Webhook (separadas para registro em prefixo diferente)
-// =============================================================================
-
-export async function webhookMensagensRotas(app: FastifyInstance) {
-  // ---------------------------------------------------------------------------
-  // POST /api/webhooks/mensagens - Receber Mensagem (Webhook externo)
-  // ---------------------------------------------------------------------------
-  app.post<{ Body: ReceberMensagemWebhookDTO }>(
-    '/mensagens',
-    async (request: FastifyRequest<{ Body: ReceberMensagemWebhookDTO }>, reply: FastifyReply) => {
-      // Webhook nao requer autenticacao normal, mas deve validar secret/signature
-      // Por simplicidade, assumimos clienteId do header ou do corpo
-      const clienteId = request.headers['x-cliente-id'] as string;
-
-      if (!clienteId) {
-        return reply.status(400).send({
-          sucesso: false,
-          erro: 'Header x-cliente-id obrigatorio',
-        });
-      }
-
-      try {
-        const dados = receberMensagemWebhookSchema.parse(request.body);
-        const resultado = await mensagensServico.receberWebhook(clienteId, dados);
-
-        return reply.status(200).send({
-          sucesso: true,
-          dados: resultado,
-        });
-      } catch (erro) {
-        return reply.status(400).send({
-          sucesso: false,
-          erro: (erro as Error).message,
-        });
-      }
     }
   );
 }

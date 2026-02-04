@@ -6,6 +6,7 @@
 export { LayoutPrincipal } from './LayoutPrincipal';
 export { MenuLateral } from './MenuLateral';
 export { ErrorBoundary } from './ErrorBoundary';
+export { RotaProtegida } from './RotaProtegida';
 
 // Sidebar Secundaria
 export {
