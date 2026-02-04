@@ -317,7 +317,9 @@ export const contatosServico = {
     }
 
     // Sincronizar com Meilisearch (async, nao bloqueia resposta)
-    enviarJob('busca.sincronizar', { operacao: 'indexar', indice: 'contatos', clienteId, documentoId: contato.id }).catch(() => {});
+    enviarJob('busca.sincronizar', { operacao: 'indexar', indice: 'contatos', clienteId, documentoId: contato.id }).catch((erro) => {
+      logger.warn({ erro, indice: 'contatos', operacao: 'indexar', documentoId: contato.id }, 'Falha ao sincronizar busca');
+    });
 
     return {
       ...contato,
@@ -369,7 +371,9 @@ export const contatosServico = {
       .where(eq(contatosEtiquetas.contatoId, id));
 
     // Sincronizar com Meilisearch
-    enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'contatos', clienteId, documentoId: id }).catch(() => {});
+    enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'contatos', clienteId, documentoId: id }).catch((erro) => {
+      logger.warn({ erro, indice: 'contatos', operacao: 'atualizar', documentoId: id }, 'Falha ao sincronizar busca');
+    });
 
     // Invalidar cache
     await invalidarCacheContato(id);
@@ -394,7 +398,9 @@ export const contatosServico = {
     await db.delete(contatos).where(eq(contatos.id, id));
 
     // Sincronizar com Meilisearch
-    enviarJob('busca.sincronizar', { operacao: 'remover', indice: 'contatos', clienteId, documentoId: id }).catch(() => {});
+    enviarJob('busca.sincronizar', { operacao: 'remover', indice: 'contatos', clienteId, documentoId: id }).catch((erro) => {
+      logger.warn({ erro, indice: 'contatos', operacao: 'remover', documentoId: id }, 'Falha ao sincronizar busca');
+    });
 
     // Invalidar cache
     await invalidarCacheContato(id);
@@ -577,7 +583,9 @@ export const contatosServico = {
         }
 
         // Sincronizar com Meilisearch
-        enviarJob('busca.sincronizar', { operacao: 'indexar', indice: 'contatos', clienteId, documentoId: novoContato.id }).catch(() => {});
+        enviarJob('busca.sincronizar', { operacao: 'indexar', indice: 'contatos', clienteId, documentoId: novoContato.id }).catch((erroJob) => {
+          logger.warn({ erro: erroJob, indice: 'contatos', operacao: 'indexar', documentoId: novoContato.id }, 'Falha ao sincronizar busca');
+        });
 
         resultados.criados++;
       } catch (erro) {

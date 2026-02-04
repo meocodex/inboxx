@@ -16,56 +16,54 @@ import {
   iniciarSentry,
   fecharSentry,
 } from './infraestrutura/observabilidade/index.js';
+import { logger } from './compartilhado/utilitarios/logger.js';
 
 async function iniciar() {
-  console.log('\n');
-  console.log('═'.repeat(50));
-  console.log('🚀 CRM WhatsApp Omnichannel API');
-  console.log('═'.repeat(50));
-  console.log(`   Ambiente: ${env.NODE_ENV}`);
-  console.log(`   Porta: ${env.PORT}`);
-  console.log('═'.repeat(50));
-  console.log('\n');
+  logger.info('═'.repeat(50));
+  logger.info('CRM WhatsApp Omnichannel API');
+  logger.info('═'.repeat(50));
+  logger.info({ ambiente: env.NODE_ENV, porta: env.PORT }, 'Configuracao do servidor');
+  logger.info('═'.repeat(50));
 
   try {
     // Inicializar Sentry (antes de tudo para capturar erros de boot)
     iniciarSentry();
 
     // Inicializar OpenTelemetry tracing
-    console.log('📊 Inicializando observabilidade...');
+    logger.info('Inicializando observabilidade...');
     await iniciarTracing();
-    console.log('   ✅ OpenTelemetry tracing inicializado\n');
+    logger.info('OpenTelemetry tracing inicializado');
 
     // Verificar conexao com banco de dados
-    console.log('📦 Verificando conexao com PostgreSQL...');
+    logger.info('Verificando conexao com PostgreSQL...');
     const bancoOk = await verificarConexaoBancoDrizzle();
     if (!bancoOk) {
       throw new Error('Falha ao conectar com PostgreSQL');
     }
-    console.log('   ✅ PostgreSQL conectado\n');
+    logger.info('PostgreSQL conectado');
 
     // Verificar conexao com Redis
-    console.log('📦 Verificando conexao com Redis...');
+    logger.info('Verificando conexao com Redis...');
     try {
       await redis.connect();
       await redis.ping();
-      console.log('   ✅ Redis conectado\n');
+      logger.info('Redis conectado');
     } catch (redisError) {
-      console.warn('   ⚠️  Redis nao disponivel (cache desabilitado)\n');
+      logger.warn('Redis nao disponivel (cache desabilitado)');
     }
 
     // Verificar conexao com Meilisearch
-    console.log('🔍 Verificando conexao com Meilisearch...');
+    logger.info('Verificando conexao com Meilisearch...');
     try {
       const meiliOk = await verificarConexaoMeilisearch();
       if (meiliOk) {
         await configurarIndices();
-        console.log('   ✅ Meilisearch conectado e indices configurados\n');
+        logger.info('Meilisearch conectado e indices configurados');
       } else {
-        console.warn('   ⚠️  Meilisearch nao disponivel (busca usa PostgreSQL ILIKE)\n');
+        logger.warn('Meilisearch nao disponivel (busca usa PostgreSQL ILIKE)');
       }
     } catch (meiliError) {
-      console.warn('   ⚠️  Meilisearch falhou (busca usa PostgreSQL ILIKE)\n');
+      logger.warn('Meilisearch falhou (busca usa PostgreSQL ILIKE)');
     }
 
     // Criar servidor Fastify
@@ -75,49 +73,48 @@ async function iniciar() {
     await app.ready();
 
     // Inicializar WebSocket Gateway usando o servidor HTTP do Fastify
-    console.log('🔌 Inicializando WebSocket...');
+    logger.info('Inicializando WebSocket...');
     criarSocketGateway(app.server);
-    console.log('   ✅ WebSocket inicializado\n');
+    logger.info('WebSocket inicializado');
 
     // Inicializar BullMQ (filas de jobs)
-    console.log('📋 Inicializando BullMQ (filas)...');
+    logger.info('Inicializando BullMQ (filas)...');
     try {
       await iniciarFilas();
       await registrarTodosWorkers();
-      console.log('   ✅ BullMQ inicializado\n');
+      logger.info('BullMQ inicializado');
     } catch (bullmqError) {
-      console.warn('   ⚠️  BullMQ falhou (filas desabilitadas)\n');
+      logger.warn('BullMQ falhou (filas desabilitadas)');
     }
 
     // Registrar Bull Board (dashboard de filas)
-    console.log('📊 Registrando Bull Board...');
+    logger.info('Registrando Bull Board...');
     try {
       await registrarDashboardFilas(app);
-      console.log('   ✅ Bull Board disponivel em /api/filas/dashboard\n');
+      logger.info('Bull Board disponivel em /api/filas/dashboard');
     } catch (dashboardError) {
-      console.warn('   ⚠️  Bull Board falhou (dashboard indisponivel)\n');
+      logger.warn('Bull Board falhou (dashboard indisponivel)');
     }
 
     // Iniciar servidor de metricas Prometheus
-    console.log('📈 Inicializando servidor de metricas...');
+    logger.info('Inicializando servidor de metricas...');
     try {
       await iniciarServidorMetricas();
     } catch (metricasError) {
-      console.warn('   ⚠️  Servidor de metricas falhou\n');
+      logger.warn('Servidor de metricas falhou');
     }
 
     // Iniciar servidor Fastify (que já inclui WebSocket)
     await app.listen({ port: env.PORT, host: '0.0.0.0' });
 
-    console.log('═'.repeat(50));
-    console.log(`✅ Servidor rodando em http://localhost:${env.PORT}`);
-    console.log(`📋 Health check: http://localhost:${env.PORT}/api/saude`);
-    console.log(`🔌 WebSocket: ws://localhost:${env.PORT}`);
-    console.log(`📈 Metricas: http://localhost:${env.OTEL_METRICS_PORT}/api/metricas`);
-    console.log('═'.repeat(50));
-    console.log('\n');
+    logger.info('═'.repeat(50));
+    logger.info({ url: `http://localhost:${env.PORT}` }, 'Servidor rodando');
+    logger.info({ healthCheck: `http://localhost:${env.PORT}/api/saude` }, 'Health check');
+    logger.info({ websocket: `ws://localhost:${env.PORT}` }, 'WebSocket');
+    logger.info({ metricas: `http://localhost:${env.OTEL_METRICS_PORT}/api/metricas` }, 'Metricas');
+    logger.info('═'.repeat(50));
   } catch (erro) {
-    console.error('❌ Erro ao iniciar servidor:', erro);
+    logger.fatal({ erro }, 'Erro ao iniciar servidor');
     process.exit(1);
   }
 }
@@ -127,31 +124,31 @@ const sinaisParada = ['SIGINT', 'SIGTERM'];
 
 sinaisParada.forEach((sinal) => {
   process.on(sinal, async () => {
-    console.log(`\n📴 Recebido ${sinal}, encerrando...`);
+    logger.info({ sinal }, 'Recebido sinal, encerrando...');
 
     try {
       await pararFilas();
-      console.log('   ✅ BullMQ parado');
+      logger.info('BullMQ parado');
 
       await pararServidorMetricas();
-      console.log('   ✅ Servidor de metricas parado');
+      logger.info('Servidor de metricas parado');
 
       await pararTracing();
-      console.log('   ✅ OpenTelemetry parado');
+      logger.info('OpenTelemetry parado');
 
       await fecharSentry();
-      console.log('   ✅ Sentry encerrado');
+      logger.info('Sentry encerrado');
 
       await fecharConexaoBanco();
-      console.log('   ✅ PostgreSQL desconectado');
+      logger.info('PostgreSQL desconectado');
 
       await redis.quit();
-      console.log('   ✅ Redis desconectado');
+      logger.info('Redis desconectado');
 
-      console.log('👋 Servidor encerrado com sucesso\n');
+      logger.info('Servidor encerrado com sucesso');
       process.exit(0);
     } catch (erro) {
-      console.error('❌ Erro ao encerrar:', erro);
+      logger.fatal({ erro }, 'Erro ao encerrar');
       process.exit(1);
     }
   });

@@ -190,9 +190,11 @@ export interface MetaErro {
 // =============================================================================
 
 export interface UaiZapWebhookPayload {
-  evento: 'mensagem_recebida' | 'status_atualizado' | 'conexao_atualizada';
+  // Eventos podem vir em diferentes formatos dependendo da versão/config do UazAPI
+  evento: 'mensagem_recebida' | 'status_atualizado' | 'conexao_atualizada' |
+          'connection' | 'connection.update' | 'messages' | 'messages_update';
   instanciaId: string;
-  dados: UaiZapMensagemRecebida | UaiZapStatusMensagem | UaiZapStatusConexao;
+  dados: UaiZapMensagemRecebida | UaiZapStatusMensagem | UaiZapStatusConexao | unknown;
 }
 
 export interface UaiZapMensagemRecebida {

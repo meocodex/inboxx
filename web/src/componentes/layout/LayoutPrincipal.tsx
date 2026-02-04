@@ -1,5 +1,5 @@
-import { memo, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { memo, useEffect, useState } from 'react';
+import { Outlet, Navigate } from 'react-router-dom';
 import { useUsuario, useCarregandoAuth, useAutenticacaoStore, useHidratado } from '@/stores';
 import { estaAutenticado } from '@/servicos/api';
 import { TooltipProvider } from '@/componentes/ui/tooltip';
@@ -11,42 +11,53 @@ import { Carregando } from '@/componentes/comum/Carregando';
 // =============================================================================
 
 export const LayoutPrincipal = memo(() => {
-  const navigate = useNavigate();
   const usuario = useUsuario();
   const carregando = useCarregandoAuth();
   const hidratado = useHidratado();
   const carregarUsuario = useAutenticacaoStore((s) => s.carregarUsuario);
 
+  // Fallback: se hidratado não mudar em 2s, força como true
+  const [forcarHidratado, setForcarHidratado] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!hidratado) {
+        setForcarHidratado(true);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [hidratado]);
+
+  const estaHidratado = hidratado || forcarHidratado;
+
   // ---------------------------------------------------------------------------
   // Verificar autenticação APÓS hidratação do Zustand
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    // Esperar Zustand terminar rehydrate antes de tomar qualquer decisão
-    if (!hidratado) {
-      return;
-    }
-
-    // Sem token = redireciona para login
-    if (!estaAutenticado()) {
-      navigate('/entrar', { replace: true });
-      return;
-    }
+    if (!estaHidratado) return;
 
     // Tem token mas não tem usuário = carrega do backend
-    if (!usuario && !carregando) {
+    if (estaAutenticado() && !usuario && !carregando) {
       carregarUsuario();
     }
-  }, [hidratado, usuario, carregando, carregarUsuario, navigate]);
+  }, [estaHidratado, usuario, carregando, carregarUsuario]);
 
   // ---------------------------------------------------------------------------
   // Aguardar hidratação do Zustand
   // ---------------------------------------------------------------------------
-  if (!hidratado) {
+  if (!estaHidratado) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Carregando tamanho="lg" texto="Inicializando..." />
       </div>
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sem token após hidratação = redirect imediato via Navigate
+  // ---------------------------------------------------------------------------
+  if (!estaAutenticado()) {
+    return <Navigate to="/entrar" replace />;
   }
 
   // ---------------------------------------------------------------------------
@@ -56,17 +67,6 @@ export const LayoutPrincipal = memo(() => {
     return (
       <div className="flex h-screen items-center justify-center">
         <Carregando tamanho="lg" texto="Carregando..." />
-      </div>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Sem token após hidratação = redirect (tratado no useEffect)
-  // ---------------------------------------------------------------------------
-  if (!estaAutenticado()) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Carregando tamanho="lg" texto="Redirecionando..." />
       </div>
     );
   }

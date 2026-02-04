@@ -3,13 +3,16 @@ const require = createRequire(import.meta.url);
 const IORedis = require('ioredis');
 
 import { env } from '../../configuracao/ambiente.js';
+import { criarLoggerFilho } from '../../compartilhado/utilitarios/logger.js';
+
+const loggerRedis = criarLoggerFilho('redis');
 
 const criarClienteRedis = () => {
   const cliente = new IORedis(env.REDIS_URL, {
     maxRetriesPerRequest: 3,
     retryStrategy: (times: number) => {
       if (times > 3) {
-        console.error('Redis: Maximo de tentativas de reconexao atingido');
+        loggerRedis.error('Maximo de tentativas de reconexao atingido');
         return null;
       }
       const delay = Math.min(times * 200, 2000);
@@ -19,15 +22,15 @@ const criarClienteRedis = () => {
   });
 
   cliente.on('connect', () => {
-    console.log('Redis: Conectado com sucesso');
+    loggerRedis.info('Conectado com sucesso');
   });
 
   cliente.on('error', (erro: Error) => {
-    console.error('Redis: Erro de conexao', erro.message);
+    loggerRedis.error({ erro: erro.message }, 'Erro de conexao');
   });
 
   cliente.on('reconnecting', () => {
-    console.log('Redis: Reconectando...');
+    loggerRedis.info('Reconectando...');
   });
 
   return cliente;

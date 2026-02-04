@@ -435,7 +435,9 @@ export const conversasServico = {
       .limit(1);
 
     // Sincronizar com Meilisearch
-    enviarJob('busca.sincronizar', { operacao: 'indexar', indice: 'conversas', clienteId, documentoId: conversaCriada.id }).catch(() => {});
+    enviarJob('busca.sincronizar', { operacao: 'indexar', indice: 'conversas', clienteId, documentoId: conversaCriada.id }).catch((erro) => {
+      logger.warn({ erro, indice: 'conversas', operacao: 'indexar', documentoId: conversaCriada.id }, 'Falha ao sincronizar busca');
+    });
 
     // Invalidar cache
     await invalidarCacheConversas(clienteId);
@@ -531,7 +533,9 @@ export const conversasServico = {
     }
 
     // Sincronizar com Meilisearch
-    enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'conversas', clienteId, documentoId: id }).catch(() => {});
+    enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'conversas', clienteId, documentoId: id }).catch((erro) => {
+      logger.warn({ erro, indice: 'conversas', operacao: 'atualizar', documentoId: id }, 'Falha ao sincronizar busca');
+    });
 
     // Invalidar cache
     await invalidarCacheConversas(clienteId);
@@ -623,7 +627,9 @@ export const conversasServico = {
     }
 
     // Sincronizar com Meilisearch
-    enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'conversas', clienteId, documentoId: id }).catch(() => {});
+    enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'conversas', clienteId, documentoId: id }).catch((erro) => {
+      logger.warn({ erro, indice: 'conversas', operacao: 'atualizar', documentoId: id }, 'Falha ao sincronizar busca');
+    });
 
     // Invalidar cache
     await invalidarCacheConversas(clienteId);
@@ -662,7 +668,9 @@ export const conversasServico = {
       });
 
     // Sincronizar com Meilisearch
-    enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'conversas', clienteId, documentoId: id }).catch(() => {});
+    enviarJob('busca.sincronizar', { operacao: 'atualizar', indice: 'conversas', clienteId, documentoId: id }).catch((erro) => {
+      logger.warn({ erro, indice: 'conversas', operacao: 'atualizar', documentoId: id }, 'Falha ao sincronizar busca');
+    });
 
     // Invalidar cache
     await invalidarCacheConversas(clienteId);

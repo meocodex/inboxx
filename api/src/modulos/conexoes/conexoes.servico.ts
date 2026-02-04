@@ -150,40 +150,47 @@ export const conexoesServico = {
     // Se provedor for UAIZAP, criar instância automaticamente
     let credenciaisFinais = dados.credenciais;
     let webhookUrl: string | undefined;
+    let qrcodeGerado: string | null = null;
 
     if (dados.provedor === 'UAIZAP' && env.UAIZAP_API_URL && env.UAIZAP_API_KEY) {
       try {
-        // Gerar ID único para instância (baseado no nome + timestamp)
-        const instanciaId = `${dados.nome.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now()}`;
-
-        // URL do webhook para esta conexão
-        webhookUrl = `${env.HOST === '0.0.0.0' ? 'http://localhost' : 'https://seu-dominio.com'}:${env.PORT}/api/webhooks/uaizap`;
-
         logger.info(
-          { instanciaId, nome: dados.nome },
+          { nome: dados.nome },
           'Criando instância UaiZap automaticamente'
         );
 
-        // Criar instância no UaiZap
+        // Criar instância no UaiZap - já retorna QR Code pois chama /instance/connect internamente
         const instancia = await uaiZapAdmin.criarInstancia({
           nome: dados.nome,
-          webhookUrl,
+          // Webhook será configurado depois se BASE_URL estiver definido
         });
 
-        // Conectar instância (gerar QR Code)
-        const { qrcode } = await uaiZapAdmin.conectarInstancia(instancia.id);
+        // O QR Code já vem da criação da instância
+        qrcodeGerado = instancia.qrcode ?? null;
 
-        // Atualizar credenciais com instanciaId
+        // URL do webhook para esta conexão (requer URL pública)
+        // Formato: /api/webhooks/uaizap/:instanciaId
+        const baseUrl = env.BASE_URL || (env.HOST !== '0.0.0.0' ? `https://${env.HOST}` : null);
+        if (baseUrl && instancia.id) {
+          webhookUrl = `${baseUrl}/api/webhooks/uaizap/${instancia.id}`;
+          // Configurar webhook na instância
+          await uaiZapAdmin.configurarWebhook(instancia.token, webhookUrl);
+          logger.info({ webhookUrl }, 'Webhook configurado');
+        }
+
+        // Salvar credenciais com o token da instância (usado para autenticação)
+        // IMPORTANTE: apiKey aqui é o token da instância específica, não o admin token
         credenciaisFinais = {
           ...(dados.credenciais || {}),
           apiUrl: env.UAIZAP_API_URL,
-          apiKey: env.UAIZAP_API_KEY,
+          apiKey: instancia.token, // Token da instância para autenticação
           instanciaId: instancia.id,
+          instanciaToken: instancia.token, // Guardar também explicitamente
           webhookUrl,
         } as any;
 
         logger.info(
-          { instanciaId: instancia.id, qrcode: !!qrcode },
+          { instanciaId: instancia.id, hasToken: !!instancia.token, hasQRCode: !!qrcodeGerado },
           'Instância UaiZap criada com sucesso'
         );
       } catch (erro) {
@@ -215,7 +222,11 @@ export const conexoesServico = {
         criadoEm: conexoes.criadoEm,
       });
 
-    return conexao;
+    // Retornar conexão com QR Code se disponível
+    return {
+      ...conexao,
+      qrcode: qrcodeGerado,
+    };
   },
 
   async atualizar(clienteId: string, id: string, dados: AtualizarConexaoDTO) {
@@ -309,31 +320,33 @@ export const conexoesServico = {
       );
     }
 
-    // Se provedor for UAIZAP, excluir instância também
+    // Se provedor for UAIZAP, desconectar e excluir instância também
     if (conexao.provedor === 'UAIZAP' && env.UAIZAP_API_URL && env.UAIZAP_API_KEY) {
-      try {
-        const credenciais = conexao.credenciais as Record<string, string>;
-        const instanciaId = credenciais.instanciaId;
+      const credenciais = conexao.credenciais as Record<string, string>;
+      const instanciaToken = credenciais.instanciaToken || credenciais.apiKey;
+      const instanciaId = credenciais.instanciaId;
 
-        if (instanciaId) {
-          logger.info(
-            { instanciaId, conexaoId: id },
-            'Excluindo instância UaiZap'
-          );
-
-          await uaiZapAdmin.excluirInstancia(instanciaId);
-
-          logger.info(
-            { instanciaId },
-            'Instância UaiZap excluída com sucesso'
-          );
-        }
-      } catch (erro) {
-        logger.error(
-          { erro: erro instanceof Error ? erro.message : 'Erro desconhecido' },
-          'Erro ao excluir instância UaiZap, prosseguindo com exclusão da conexão'
+      if (instanciaToken) {
+        logger.info(
+          { conexaoId: id, instanciaId, provedor: conexao.provedor },
+          'Iniciando exclusão de conexão UAIZAP'
         );
-        // Continua com a exclusão mesmo se falhar
+
+        try {
+          // Excluir instância do servidor (já faz logout internamente)
+          await uaiZapAdmin.excluirInstancia(instanciaToken, instanciaId);
+          logger.info(
+            { conexaoId: id, instanciaId },
+            'Conexão excluída com sucesso (banco local e servidor UAZAPI)'
+          );
+        } catch (erro) {
+          const mensagemErro = erro instanceof Error ? erro.message : 'Erro desconhecido';
+          logger.warn(
+            { erro: mensagemErro, conexaoId: id, instanciaId },
+            'Falha ao excluir instância UaiZap do servidor (instância pode permanecer órfã)'
+          );
+          // Continua com a exclusão da conexão no banco
+        }
       }
     }
 
@@ -343,7 +356,7 @@ export const conexoesServico = {
   async atualizarStatus(
     clienteId: string,
     id: string,
-    status: 'CONECTADO' | 'DESCONECTADO' | 'RECONECTANDO' | 'ERRO'
+    status: 'CONECTADO' | 'DESCONECTADO' | 'AGUARDANDO_QR' | 'RECONECTANDO' | 'ERRO'
   ) {
     const result = await db
       .select({ id: conexoes.id })
@@ -373,34 +386,82 @@ export const conexoesServico = {
   },
 
   async testarConexao(clienteId: string, id: string) {
-    const result = await db
-      .select({ id: conexoes.id })
+    const [conexao] = await db
+      .select()
       .from(conexoes)
       .where(and(eq(conexoes.id, id), eq(conexoes.clienteId, clienteId)))
       .limit(1);
 
-    if (result.length === 0) {
+    if (!conexao) {
       throw new ErroNaoEncontrado('Conexao nao encontrada');
     }
 
-    // Simulacao de teste de conexao
-    // Em producao, aqui faria a chamada real para a API do provedor
-    const sucesso = true; // Simular sucesso
+    let sucesso = false;
+    let mensagem = 'Falha ao testar conexao';
+    let novoStatus: 'CONECTADO' | 'DESCONECTADO' | 'ERRO' = 'ERRO';
 
-    if (sucesso) {
-      await db
-        .update(conexoes)
-        .set({
-          status: 'CONECTADO',
-          ultimoStatus: new Date(),
-        })
-        .where(eq(conexoes.id, id));
+    // Testar conexão real baseado no provedor
+    if (conexao.provedor === 'UAIZAP') {
+      try {
+        const { UaiZapProvedor } = await import('../whatsapp/provedores/uaizap.provedor.js');
+        const credenciais = conexao.credenciais as { apiUrl: string; apiKey: string; instanciaId: string };
+
+        if (!credenciais?.instanciaId) {
+          mensagem = 'Credenciais UaiZap não configuradas';
+          novoStatus = 'ERRO';
+        } else {
+          const provedor = new UaiZapProvedor(credenciais);
+          const statusInstancia = await provedor.verificarStatus();
+
+          if (statusInstancia.conectado) {
+            sucesso = true;
+            mensagem = 'Conexao testada com sucesso';
+            novoStatus = 'CONECTADO';
+          } else {
+            mensagem = statusInstancia.mensagem || 'WhatsApp não conectado';
+            novoStatus = 'DESCONECTADO';
+          }
+        }
+      } catch (erro) {
+        logger.error(
+          { erro: erro instanceof Error ? erro.message : 'Erro desconhecido', conexaoId: id },
+          'Erro ao testar conexão UaiZap'
+        );
+        mensagem = erro instanceof Error ? erro.message : 'Erro ao verificar conexão';
+        novoStatus = 'ERRO';
+      }
+    } else if (conexao.provedor === 'META_API') {
+      // Para Meta API, verificar se as credenciais estão configuradas
+      const credenciais = conexao.credenciais as { token?: string; phoneNumberId?: string };
+      if (credenciais?.token && credenciais?.phoneNumberId) {
+        // Aqui poderia fazer uma chamada real para a Meta API
+        // Por enquanto, assume que está conectado se tiver credenciais
+        sucesso = true;
+        mensagem = 'Credenciais Meta API configuradas';
+        novoStatus = 'CONECTADO';
+      } else {
+        mensagem = 'Credenciais Meta API incompletas';
+        novoStatus = 'ERRO';
+      }
+    } else {
+      // Outros provedores - verificar apenas se tem credenciais
+      mensagem = 'Provedor não suporta teste de conexão';
+      novoStatus = 'DESCONECTADO';
     }
+
+    // Atualizar status no banco
+    await db
+      .update(conexoes)
+      .set({
+        status: novoStatus,
+        ultimoStatus: new Date(),
+      })
+      .where(eq(conexoes.id, id));
 
     return {
       sucesso,
-      mensagem: sucesso ? 'Conexao testada com sucesso' : 'Falha ao testar conexao',
-      status: sucesso ? 'CONECTADO' : 'ERRO',
+      mensagem,
+      status: novoStatus,
     };
   },
 
@@ -424,8 +485,35 @@ export const conexoesServico = {
     const credenciais = conexao.credenciais as { apiUrl: string; apiKey: string; instanciaId: string };
     const provedor = new UaiZapProvedor(credenciais);
 
+    // Primeiro verificar o status atual
+    const statusAtual = await provedor.verificarStatus();
+
+    // Se está conectado, atualizar o status no banco
+    if (statusAtual.conectado && conexao.status !== 'CONECTADO') {
+      await db
+        .update(conexoes)
+        .set({ status: 'CONECTADO', ultimoStatus: new Date() })
+        .where(eq(conexoes.id, id));
+
+      logger.info(
+        { conexaoId: id },
+        'Status atualizado para CONECTADO via polling'
+      );
+
+      // Retornar sem QR Code pois já está conectado
+      return { qrcode: null, status: 'CONECTADO' };
+    }
+
+    // Se não está conectado, obter novo QR Code
     const qrcode = await provedor.obterQRCode();
-    return { qrcode };
+
+    // Mapear status do UAZAPI para enum da aplicação
+    // Estados UazAPI: 'disconnected', 'connecting', 'connected'
+    const statusMapeado = statusAtual.conectado
+      ? 'CONECTADO'
+      : (statusAtual.status === 'disconnected' ? 'DESCONECTADO' : 'AGUARDANDO_QR');
+
+    return { qrcode, status: statusMapeado };
   },
 
   async reconectar(clienteId: string, id: string) {
@@ -452,9 +540,9 @@ export const conexoesServico = {
     const credenciais = conexao.credenciais as { apiUrl: string; apiKey: string; instanciaId: string };
     const provedor = new UaiZapProvedor(credenciais);
 
-    await provedor.reiniciar();
+    const resultado = await provedor.reiniciar();
 
-    return { sucesso: true, mensagem: 'Reconexao iniciada' };
+    return { sucesso: true, mensagem: 'Reconexao iniciada', qrcode: resultado.qrcode };
   },
 
   async desconectar(clienteId: string, id: string) {

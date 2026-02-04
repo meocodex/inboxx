@@ -46,8 +46,22 @@ export interface CriarCanalConexaoDTO {
   nome: string;
   canal: TipoCanalConexao;
   provedor: ProvedorConexao;
-  telefone?: string;
-  webhook?: string;
+  credenciais?: {
+    token?: string;
+    phoneNumberId?: string;
+    businessAccountId?: string;
+    apiKey?: string;
+    webhookSecret?: string;
+  };
+  configuracoes?: {
+    webhookUrl?: string;
+    mensagemBoasVindas?: string;
+    horarioAtendimento?: {
+      inicio: string;
+      fim: string;
+      diasSemana: number[];
+    };
+  } | null;
 }
 
 export interface AtualizarCanalConexaoDTO {
@@ -98,4 +112,32 @@ export interface MetricasConexoes {
   comErro: number;
   aguardandoQR: number;
   totalConversasAtivas: number;
+}
+
+// =============================================================================
+// Respostas da API
+// =============================================================================
+
+/**
+ * Resposta ao criar conexão - pode incluir QR Code para UaiZap
+ */
+export interface CriarConexaoResposta extends CanalConexao {
+  qrcode?: string | null;
+}
+
+/**
+ * Resposta ao testar conexão
+ */
+export interface TestarConexaoResposta {
+  sucesso: boolean;
+  mensagem: string;
+  status: StatusCanalConexao;
+}
+
+/**
+ * Resposta ao obter QR Code
+ */
+export interface ObterQRCodeResposta {
+  qrcode: string | null;
+  status?: StatusCanalConexao;
 }

@@ -33,6 +33,7 @@ export default function Entrar() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -41,6 +42,11 @@ export default function Entrar() {
       senha: '',
     },
   });
+
+  const preencherDemo = () => {
+    setValue('email', 'admin@admin.com');
+    setValue('senha', 'admin123');
+  };
 
   const onSubmit = async (dados: LoginForm) => {
     setErroLocal(null);
@@ -127,6 +133,17 @@ export default function Entrar() {
               ) : (
                 'Entrar'
               )}
+            </Button>
+
+            {/* Botão Demo */}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={preencherDemo}
+              disabled={carregando}
+            >
+              Preencher com acesso demo
             </Button>
           </form>
 

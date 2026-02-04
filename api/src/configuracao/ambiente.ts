@@ -67,6 +67,9 @@ const ambienteSchema = z.object({
   UAIZAP_API_URL: z.string().url().optional(),
   UAIZAP_API_KEY: z.string().optional(),
 
+  // URL base pública da aplicação (para webhooks)
+  BASE_URL: z.string().url().optional(),
+
   // Webhooks
   WEBHOOK_WHITELIST_IPS: z.string().optional(), // ex: "192.168.1.1,10.0.0.1"
 

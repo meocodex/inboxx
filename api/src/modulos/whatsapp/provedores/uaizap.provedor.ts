@@ -33,12 +33,13 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
   constructor(config: ConfiguracaoUaiZap) {
     this.config = config;
 
+    // API UazAPI usa header "token" para autenticação por instância
     this.api = axios.create({
       baseURL: config.apiUrl,
       timeout: TIMEOUT_MS,
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': config.apiKey,
+        'token': config.apiKey, // Token da instância específica
       },
     });
   }
@@ -58,12 +59,9 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
         const endpoint = this.obterEndpoint(conteudo.tipo);
         const payload = this.construirPayload(telefone, conteudo, opcoes);
 
-        const response = await this.api.post(
-          `/instancias/${this.config.instanciaId}/${endpoint}`,
-          payload
-        );
+        const response = await this.api.post(endpoint, payload);
 
-        const mensagemId = response.data.id || response.data.mensagemId;
+        const mensagemId = response.data.id || response.data.mensagemId || response.data.key?.id;
 
         logger.debug({ telefone, mensagemId }, 'UaiZap: Mensagem enviada');
 
@@ -92,18 +90,19 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
   // ===========================================================================
 
   private obterEndpoint(tipo: ConteudoMensagem['tipo']): string {
+    // Endpoints corretos da API UazAPI
     const endpoints: Record<string, string> = {
-      text: 'mensagem/texto',
-      image: 'mensagem/imagem',
-      audio: 'mensagem/audio',
-      video: 'mensagem/video',
-      document: 'mensagem/documento',
-      location: 'mensagem/localizacao',
-      contacts: 'mensagem/contato',
-      sticker: 'mensagem/sticker',
+      text: '/message/text',
+      image: '/message/image',
+      audio: '/message/audio',
+      video: '/message/video',
+      document: '/message/document',
+      location: '/message/location',
+      contacts: '/message/contact',
+      sticker: '/message/sticker',
     };
 
-    return endpoints[tipo] || 'mensagem/texto';
+    return endpoints[tipo] || '/message/text';
   }
 
   // ===========================================================================
@@ -115,19 +114,27 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
     conteudo: ConteudoMensagem,
     opcoes?: EnviarMensagemOpcoes
   ): Record<string, unknown> {
+    // API UazAPI usa "jid" no formato "5511999999999@s.whatsapp.net"
+    const jid = this.formatarJid(telefone);
+
     const base: Record<string, unknown> = {
-      numero: this.formatarTelefone(telefone),
+      jid,
     };
 
     if (opcoes?.replyTo) {
-      base.citarMensagem = opcoes.replyTo;
+      base.quoted = {
+        key: {
+          id: opcoes.replyTo,
+          remoteJid: jid,
+        },
+      };
     }
 
     switch (conteudo.tipo) {
       case 'text':
         return {
           ...base,
-          texto: (conteudo as MensagemTexto).texto,
+          text: (conteudo as MensagemTexto).texto,
         };
 
       case 'image':
@@ -139,10 +146,9 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
         return {
           ...base,
           url: midia.url,
-          mediaId: midia.mediaId,
           caption: midia.caption,
-          nomeArquivo: midia.filename,
-          mimeType: midia.mimeType,
+          filename: midia.filename,
+          mimetype: midia.mimeType,
         };
       }
 
@@ -152,16 +158,15 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
           ...base,
           latitude: loc.latitude,
           longitude: loc.longitude,
-          nome: loc.nome,
-          endereco: loc.endereco,
+          name: loc.nome,
+          address: loc.endereco,
         };
       }
 
       case 'contacts': {
         return {
           ...base,
-          // UaiZap usa formato diferente para contatos
-          conteudo,
+          contact: conteudo,
         };
       }
 
@@ -232,18 +237,18 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
       const FormData = (await import('form-data')).default;
       const form = new FormData();
 
-      form.append('arquivo', buffer, {
+      form.append('file', buffer, {
         filename: filename || 'file',
         contentType: mimeType,
       });
 
       const response = await this.api.post(
-        `/instancias/${this.config.instanciaId}/midia/upload`,
+        '/media/upload',
         form,
         {
           headers: {
             ...form.getHeaders(),
-            'x-api-key': this.config.apiKey,
+            'token': this.config.apiKey,
           },
         }
       );
@@ -268,15 +273,15 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
 
   async obterMidia(mediaId: string): Promise<MidiaWhatsApp> {
     try {
-      const response = await this.api.get(
-        `/instancias/${this.config.instanciaId}/midia/${mediaId}`
-      );
+      const response = await this.api.post('/media/download', {
+        messageId: mediaId,
+      });
 
       return {
         id: mediaId,
         url: response.data.url,
         mimeType: response.data.mimeType,
-        tamanho: response.data.tamanho,
+        tamanho: response.data.size,
       };
     } catch (erro) {
       const mensagemErro = this.extrairErro(erro);
@@ -325,9 +330,10 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
 
   async marcarComoLida(mensagemId: string): Promise<void> {
     try {
-      await this.api.post(
-        `/instancias/${this.config.instanciaId}/mensagem/${mensagemId}/lida`
-      );
+      // API UazAPI usa /chats/markasread
+      await this.api.post('/chats/markasread', {
+        jid: mensagemId, // JID do chat, não da mensagem
+      });
 
       logger.debug({ mensagemId }, 'UaiZap: Mensagem marcada como lida');
     } catch (erro) {
@@ -342,13 +348,51 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
 
   async verificarConexao(): Promise<boolean> {
     try {
-      const response = await this.api.get(
-        `/instancias/${this.config.instanciaId}/status`
-      );
+      // Endpoint correto: GET /instance/status
+      const response = await this.api.get('/instance/status');
 
-      return response.data.status === 'conectado';
+      // Estados UazAPI: 'disconnected', 'connecting', 'connected'
+      // O status vem em response.data.instance.status ou response.data.status
+      const instanceData = response.data?.instance || response.data;
+      return instanceData?.status === 'connected';
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Verificar status detalhado da conexão
+   */
+  async verificarStatus(): Promise<{ conectado: boolean; status: string; mensagem?: string }> {
+    try {
+      // Endpoint correto: GET /instance/status
+      const response = await this.api.get('/instance/status');
+
+      logger.debug({
+        endpoint: '/instance/status',
+        data: response.data,
+      }, 'UaiZap: Resposta do verificarStatus');
+
+      // Estados UazAPI: 'disconnected', 'connecting', 'connected'
+      // O status vem em response.data.instance.status ou response.data.status
+      const instanceData = response.data?.instance || response.data;
+      const status = instanceData?.status || 'disconnected';
+      const conectado = status === 'connected';
+
+      return {
+        conectado,
+        status,
+        mensagem: conectado ? 'WhatsApp conectado' : `Status: ${status}`,
+      };
+    } catch (erro) {
+      const mensagemErro = this.extrairErro(erro);
+      logger.error({ erro: mensagemErro }, 'UaiZap: Erro ao verificar status');
+
+      return {
+        conectado: false,
+        status: 'erro',
+        mensagem: mensagemErro,
+      };
     }
   }
 
@@ -358,9 +402,8 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
 
   async desconectar(): Promise<void> {
     try {
-      await this.api.post(
-        `/instancias/${this.config.instanciaId}/desconectar`
-      );
+      // Endpoint correto: GET /instance/logout
+      await this.api.get('/instance/logout');
 
       logger.debug('UaiZap: Desconectado');
     } catch (erro) {
@@ -375,34 +418,99 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
 
   /**
    * Obter QR Code para conexao
+   * Usa POST /instance/connect para iniciar conexão e obter QR Code
    */
   async obterQRCode(): Promise<string | null> {
     try {
-      const response = await this.api.get(
-        `/instancias/${this.config.instanciaId}/qrcode`
-      );
+      // 1. Verificar status primeiro - o QR Code pode estar no status
+      const statusResponse = await this.api.get('/instance/status');
+      const statusData = statusResponse.data?.instance || statusResponse.data;
+      const status = statusData?.status;
 
-      return response.data.qrcode || null;
+      logger.debug({
+        endpoint: '/instance/status',
+        statusCode: statusResponse.status,
+        data: statusResponse.data,
+      }, 'UaiZap: Resposta do endpoint status');
+
+      // Se já conectado, não precisa de QR
+      if (status === 'connected') {
+        logger.info('UaiZap: Instância já conectada, QR Code não necessário');
+        return null;
+      }
+
+      // Se já tem QR Code no status (connecting), retornar
+      if (statusData?.qrcode) {
+        logger.info({ hasQRCode: true }, 'UaiZap: QR Code obtido do status');
+        return statusData.qrcode;
+      }
+
+      // 2. Se não tem QR Code, iniciar conexão via POST /instance/connect
+      const connectResponse = await this.api.post('/instance/connect');
+
+      logger.debug({
+        endpoint: '/instance/connect',
+        statusCode: connectResponse.status,
+        data: connectResponse.data,
+      }, 'UaiZap: Resposta do endpoint connect');
+
+      // QR Code vem no campo instance.qrcode da resposta do connect
+      const qrcode = connectResponse.data?.instance?.qrcode || connectResponse.data?.qrcode;
+
+      if (qrcode) {
+        logger.info({ hasQRCode: true }, 'UaiZap: QR Code obtido com sucesso via connect');
+        return qrcode;
+      }
+
+      logger.warn({ response: connectResponse.data }, 'UaiZap: Resposta sem QR Code');
+      return null;
     } catch (erro) {
       const mensagemErro = this.extrairErro(erro);
       logger.error({ erro: mensagemErro }, 'UaiZap: Erro ao obter QR Code');
+
+      // Se erro 404 ou similar, a instância pode precisar ser criada/reiniciada
+      if (axios.isAxiosError(erro) && erro.response?.status === 404) {
+        logger.warn('UaiZap: Endpoint retornou 404 - instância pode não existir');
+      }
+
       return null;
     }
   }
 
   /**
-   * Reiniciar conexao
+   * Reiniciar conexao (gerar novo QR Code)
    */
-  async reiniciar(): Promise<void> {
+  async reiniciar(): Promise<{ qrcode?: string; status?: string }> {
     try {
-      await this.api.post(
-        `/instancias/${this.config.instanciaId}/reiniciar`
-      );
+      // Desconectar primeiro
+      await this.desconectar();
+      // Aguardar um momento antes de reconectar
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      logger.debug('UaiZap: Reiniciado');
+      // POST /instance/connect - inicia conexão e retorna QR Code
+      const response = await this.api.post('/instance/connect');
+
+      logger.debug({
+        endpoint: '/instance/connect',
+        statusCode: response.status,
+        data: response.data,
+      }, 'UaiZap: Resposta do endpoint connect (reiniciar)');
+
+      // QR Code vem no campo instance.qrcode da resposta do connect
+      const qrcode = response.data?.instance?.qrcode || response.data?.qrcode;
+
+      logger.info({ hasQRCode: !!qrcode }, 'UaiZap: Reiniciado');
+      return { qrcode, status: 'connecting' };
     } catch (erro) {
       const mensagemErro = this.extrairErro(erro);
       logger.error({ erro: mensagemErro }, 'UaiZap: Erro ao reiniciar');
+
+      // Se erro 404 ou similar, a instância pode precisar ser criada/reiniciada
+      if (axios.isAxiosError(erro) && erro.response?.status === 404) {
+        logger.warn('UaiZap: Endpoint retornou 404 - instância pode não existir');
+      }
+
+      return { status: 'erro' };
     }
   }
 
@@ -410,7 +518,10 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
   // Utilitarios
   // ===========================================================================
 
-  private formatarTelefone(telefone: string): string {
+  /**
+   * Formatar telefone para JID do WhatsApp
+   */
+  private formatarJid(telefone: string): string {
     // Remove caracteres nao numericos
     let limpo = telefone.replace(/\D/g, '');
 
@@ -419,7 +530,8 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
       limpo = '55' + limpo;
     }
 
-    return limpo;
+    // Formato JID do WhatsApp
+    return `${limpo}@s.whatsapp.net`;
   }
 
   private extrairErro(erro: unknown): string {
@@ -430,6 +542,12 @@ export class UaiZapProvedor implements IProvedorWhatsApp {
       }
       if (data?.erro) {
         return data.erro;
+      }
+      if (data?.message) {
+        return data.message;
+      }
+      if (data?.error) {
+        return data.error;
       }
       return erro.message;
     }

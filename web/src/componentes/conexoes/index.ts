@@ -1,3 +1,4 @@
 export { CardConexao } from './CardConexao';
-export { DetalhesConexao } from './DetalhesConexao';
-export { WizardCriacao } from './WizardCriacao';
+export { DialogConexao } from './DialogConexao';
+export { QRCodeViewer } from './QRCodeViewer';
+export * from './conexoes.config';

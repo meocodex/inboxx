@@ -47,9 +47,18 @@ api.interceptors.response.use(
 
       if (refreshToken) {
         try {
-          const response = await axios.post(`${API_URL}/autenticacao/renovar`, {
-            refreshToken,
-          });
+          // IMPORTANTE: O backend requer o token expirado no header Authorization
+          // para extrair o usuarioId durante a renovação
+          const tokenExpirado = obterToken();
+          const response = await axios.post(
+            `${API_URL}/autenticacao/renovar`,
+            { refreshToken },
+            {
+              headers: {
+                Authorization: tokenExpirado ? `Bearer ${tokenExpirado}` : undefined,
+              },
+            }
+          );
 
           const { accessToken, refreshToken: novoRefresh } = response.data.dados;
           salvarTokens(accessToken, novoRefresh);
@@ -60,8 +69,12 @@ api.interceptors.response.use(
             config.headers.Authorization = `Bearer ${accessToken}`;
             return api(config);
           }
-        } catch {
-          // Refresh falhou - limpar tokens e redirecionar
+        } catch (refreshError) {
+          // Refresh falhou - logar erro e redirecionar
+          if (import.meta.env.DEV) {
+            console.error('[AUTH] Falha ao renovar token:', refreshError);
+          }
+
           redirecionando = true;
           limparTokens();
 

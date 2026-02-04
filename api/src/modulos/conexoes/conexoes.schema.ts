@@ -20,6 +20,7 @@ export const ProvedorConexao = {
 export const StatusConexao = {
   CONECTADO: 'CONECTADO',
   DESCONECTADO: 'DESCONECTADO',
+  AGUARDANDO_QR: 'AGUARDANDO_QR',
   RECONECTANDO: 'RECONECTANDO',
   ERRO: 'ERRO',
 } as const;
@@ -32,13 +33,16 @@ export const criarConexaoBodySchema = z.object({
   nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100),
   canal: z.enum(['WHATSAPP', 'INSTAGRAM', 'FACEBOOK']),
   provedor: z.enum(['META_API', 'UAIZAP', 'GRAPH_API']),
-  credenciais: z.object({
-    token: z.string().optional(),
-    phoneNumberId: z.string().optional(),
-    businessAccountId: z.string().optional(),
-    apiKey: z.string().optional(),
-    webhookSecret: z.string().optional(),
-  }),
+  credenciais: z
+    .object({
+      token: z.string().optional(),
+      phoneNumberId: z.string().optional(),
+      businessAccountId: z.string().optional(),
+      apiKey: z.string().optional(),
+      webhookSecret: z.string().optional(),
+    })
+    .optional()
+    .default({}),
   configuracoes: z
     .object({
       webhookUrl: z.string().url().optional(),
@@ -89,11 +93,11 @@ export const atualizarConexaoBodySchema = z.object({
 
 export const listarConexoesQuerySchema = paginacaoComBuscaSchema.extend({
   canal: z.enum(['WHATSAPP', 'INSTAGRAM', 'FACEBOOK']).optional(),
-  status: z.enum(['CONECTADO', 'DESCONECTADO', 'RECONECTANDO', 'ERRO']).optional(),
+  status: z.enum(['CONECTADO', 'DESCONECTADO', 'AGUARDANDO_QR', 'RECONECTANDO', 'ERRO']).optional(),
 });
 
 export const atualizarStatusBodySchema = z.object({
-  status: z.enum(['CONECTADO', 'DESCONECTADO', 'RECONECTANDO', 'ERRO']),
+  status: z.enum(['CONECTADO', 'DESCONECTADO', 'AGUARDANDO_QR', 'RECONECTANDO', 'ERRO']),
 });
 
 // =============================================================================

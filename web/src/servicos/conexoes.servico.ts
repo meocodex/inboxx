@@ -6,6 +6,9 @@ import type {
   CriarCanalConexaoDTO,
   AtualizarCanalConexaoDTO,
   FiltrosCanalConexao,
+  CriarConexaoResposta,
+  TestarConexaoResposta,
+  ObterQRCodeResposta,
 } from '@/tipos/conexao.tipos';
 
 // =============================================================================
@@ -32,10 +35,10 @@ export const conexoesServico = {
   },
 
   // ---------------------------------------------------------------------------
-  // Criar Conexão
+  // Criar Conexão (retorna QR Code se UaiZap)
   // ---------------------------------------------------------------------------
-  async criar(dados: CriarCanalConexaoDTO): Promise<CanalConexao> {
-    const response = await api.post<RespostaApi<CanalConexao>>('/conexoes', dados);
+  async criar(dados: CriarCanalConexaoDTO): Promise<CriarConexaoResposta> {
+    const response = await api.post<RespostaApi<CriarConexaoResposta>>('/conexoes', dados);
     return response.data.dados;
   },
 
@@ -57,8 +60,8 @@ export const conexoesServico = {
   // ---------------------------------------------------------------------------
   // Testar Conexão
   // ---------------------------------------------------------------------------
-  async testar(id: string): Promise<{ status: string; conectado: boolean }> {
-    const response = await api.post<RespostaApi<{ status: string; conectado: boolean }>>(
+  async testar(id: string): Promise<TestarConexaoResposta> {
+    const response = await api.post<RespostaApi<TestarConexaoResposta>>(
       `/conexoes/${id}/testar`
     );
     return response.data.dados;
@@ -74,8 +77,8 @@ export const conexoesServico = {
   // ---------------------------------------------------------------------------
   // Obter QR Code (UaiZap)
   // ---------------------------------------------------------------------------
-  async obterQRCode(id: string): Promise<{ qrcode: string | null }> {
-    const response = await api.get<RespostaApi<{ qrcode: string | null }>>(`/conexoes/${id}/qrcode`);
+  async obterQRCode(id: string): Promise<ObterQRCodeResposta> {
+    const response = await api.get<RespostaApi<ObterQRCodeResposta>>(`/conexoes/${id}/qrcode`);
     return response.data.dados;
   },
 

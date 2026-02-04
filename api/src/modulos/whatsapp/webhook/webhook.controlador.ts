@@ -143,15 +143,17 @@ export async function receberWebhookUaiZap(
 ): Promise<void> {
   const { instanciaId } = request.params;
 
-  // Buscar todas conexoes UaiZap e filtrar pela instanciaId nas configuracoes
+  // Buscar todas conexoes UaiZap e filtrar pela instanciaId nas credenciais
   const conexoesResult = await db
     .select()
     .from(conexoes)
     .where(eq(conexoes.provedor, 'UAIZAP'));
 
   const conexao = conexoesResult.find((c) => {
+    // instanciaId pode estar em credenciais ou configuracoes
+    const creds = c.credenciais as { instanciaId?: string } | null;
     const config = c.configuracoes as { instanciaId?: string } | null;
-    return config?.instanciaId === instanciaId;
+    return creds?.instanciaId === instanciaId || config?.instanciaId === instanciaId;
   });
 
   if (!conexao) {
@@ -161,7 +163,10 @@ export async function receberWebhookUaiZap(
 
   // Validar assinatura HMAC (OBRIGATÓRIO)
   const assinatura = request.headers['x-signature'] as string;
-  const apiKey = (conexao.configuracoes as { apiKey?: string } | null)?.apiKey;
+  // apiKey pode estar em credenciais ou configuracoes
+  const creds = conexao.credenciais as { apiKey?: string; instanciaToken?: string } | null;
+  const config = conexao.configuracoes as { apiKey?: string } | null;
+  const apiKey = creds?.apiKey || creds?.instanciaToken || config?.apiKey;
 
   if (!assinatura) {
     logger.warn({ instanciaId, ip: request.ip }, 'Webhook UaiZap: Assinatura ausente');
@@ -225,14 +230,64 @@ async function processarPayloadUaiZap(
       break;
 
     case 'conexao_atualizada':
-      // TODO: Processar mudanca de status da conexao
-      logger.info(
-        { instanciaId: payload.instanciaId, dados: payload.dados },
-        'Webhook UaiZap: Status conexao atualizado'
-      );
+    case 'connection':
+    case 'connection.update':
+      await processarConexaoUaiZap(payload.dados, conexaoId);
       break;
 
     default:
       logger.debug({ evento: payload.evento }, 'Webhook UaiZap: Evento ignorado');
   }
+}
+
+// =============================================================================
+// Processar Conexão UaiZap (Status Update)
+// =============================================================================
+
+async function processarConexaoUaiZap(
+  dados: unknown,
+  conexaoId: string
+): Promise<void> {
+  const dadosConexao = dados as {
+    status?: string;
+    state?: string;
+    connected?: boolean;
+    loggedIn?: boolean;
+  };
+
+  // Determinar o status baseado nos dados recebidos
+  const statusUazapi = dadosConexao?.status || dadosConexao?.state;
+  const conectado = dadosConexao?.connected || dadosConexao?.loggedIn;
+
+  let novoStatus: 'CONECTADO' | 'DESCONECTADO' | 'AGUARDANDO_QR' | 'RECONECTANDO' | 'ERRO';
+
+  if (conectado || statusUazapi === 'connected' || statusUazapi === 'open') {
+    novoStatus = 'CONECTADO';
+  } else if (statusUazapi === 'connecting') {
+    novoStatus = 'AGUARDANDO_QR';
+  } else if (statusUazapi === 'disconnected' || statusUazapi === 'close') {
+    novoStatus = 'DESCONECTADO';
+  } else {
+    logger.debug({ dados }, 'Webhook UaiZap: Status de conexão desconhecido');
+    return;
+  }
+
+  logger.info(
+    { conexaoId, statusUazapi, novoStatus, conectado },
+    'Webhook UaiZap: Atualizando status da conexão'
+  );
+
+  // Atualizar status no banco
+  await db
+    .update(conexoes)
+    .set({
+      status: novoStatus,
+      ultimoStatus: new Date(),
+    })
+    .where(eq(conexoes.id, conexaoId));
+
+  logger.info(
+    { conexaoId, novoStatus },
+    'Webhook UaiZap: Status atualizado com sucesso'
+  );
 }
